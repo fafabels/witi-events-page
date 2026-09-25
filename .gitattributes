@@ -1,0 +1,22 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# Explicitly set common web file types as text
+*.html text
+*.css text
+*.js text
+*.json text
+*.xml text
+*.svg text
+
+# Images and other binaries (no diff/merge)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+
+# Force LF line endings for all text files
+* text eol=lf
