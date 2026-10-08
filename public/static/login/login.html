@@ -8,7 +8,7 @@
 <body>
     <main id="login_form">
         <h1>Log in</h1>
-        <form method="POST">
+        <form id="login" method="POST">
             <label for="name">Name:</label>
             <input type="text" id="name" name="name" placeholder="Your name..." required>
             <br>
@@ -17,7 +17,57 @@
             <br>
             <label for="password">Password:</label>
             <input type="password" id="password" name="password" placeholder="Your password..." required>
+            <p id="message"></p>
+            <button type="submit">Log in</button>
         </form>
     </main>
+
+    <script>
+        // Posts the form to /api/auth/login as JSON instead of doing a
+        // native form POST (which would navigate to a blank page with
+        // no way to show an error message).
+        const form = document.getElementById("login");
+        const message = document.getElementById("message");
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const button = form.querySelector("button");
+            button.disabled = true;
+            message.textContent = "Checking...";
+            message.style.color = "inherit";
+
+            try {
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                        name: document.getElementById("name").value,
+                        studentId: document.getElementById("studentId").value,
+                        password: document.getElementById("password").value,
+                    }),
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    message.textContent = data.error || "Login failed.";
+                    message.style.color = "red";
+                    button.disabled = false;
+                    return;
+                }
+
+                // Server decided the destination. The cookie is already
+                // set (HttpOnly), so the next page load is authenticated.
+                window.location.replace(data.redirect);
+            } catch (err) {
+                console.error(err);
+                message.textContent = "Could not reach the server.";
+                message.style.color = "red";
+                button.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>

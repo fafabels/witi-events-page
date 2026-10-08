@@ -3,12 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
+    <title>WITI Bulletin Board</title>
+    <noscript>
+        <meta http-equiv="refresh" content="0; url=./static/login/login.html">
+    </noscript>
 </head>
 <body>
-    Loading...
+    <p id="status">Checking your session&hellip;</p>
+
     <script>
-        
+        // ============================================================
+        //  index.html -- session gate / router.
+        //
+        //  This page holds NO secrets and makes NO access decisions.
+        //  It asks the server "who am I?" and forwards you to the
+        //  right page. The server re-checks every protected request,
+        //  so tampering with this script gains nothing.
+        //
+        //  The old code here was broken:
+        //      require('dotenv').config();     // no `require` in a browser
+        //      const db = process.env.DB_ID;   // no `process` in a browser
+        //  A browser cannot read .env or talk to D1 directly -- that is
+        //  exactly why the check moved into functions/api/me.js.
+        // ============================================================
+
+        // Where each role lands. Keep these in sync with the real paths.
+        const ROUTES = {
+            admin: "/static/admin/admin.html",
+            user:  "/static/user/main_page.html",
+            none:  "/static/login/login.html",
+        };
+
+        const status = document.getElementById("status");
+
+        // send them onward
+        function go(path) {
+            window.location.replace(path);
+        }
+
+        async function routeBySession() {
+            let res;
+            try {
+                // The session cookie is sent automatically with this
+                // request. `credentials: "same-origin"` is the default
+                // for same-origin fetch, but being explicit avoids
+                // surprises if you ever move the API to a subdomain.
+                res = await fetch("/api/me", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+            } catch (err) {
+                // Network error / offline -- fall back to login rather than
+                // hanging on "Checking your session...".
+                console.error("Could not reach /api/me:", err);
+                go(ROUTES.none);
+                return;
+            }
+
+            // 401 = no valid session cookie. Everyone who is not logged
+            // in ends up here, so that is not an error condition.
+            if (res.status === 401) {
+                go(ROUTES.none);
+                return;
+            }
+
+            if (!res.ok) {
+                console.error("/api/me failed:", res.status);
+                go(ROUTES.none);
+                return;
+            }
+
+            const me = await res.json();
+
+            // Server is the authority on `me.access`. We only choose a
+            // destination -- we never use this value to unlock anything.
+            if (me.access === "admin") {
+                go(ROUTES.admin);
+            } else {
+                go(ROUTES.user);
+            }
+        }
+
+        routeBySession();
+
+        // Safety net: if the redirect above never resolves (hung request,
+        // blocked JS), don't leave the user staring at a blank page.
+        setTimeout(() => {
+            if (document.body.contains(status)) go(ROUTES.none);
+        }, 5000);
     </script>
 </body>
 </html>

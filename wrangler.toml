@@ -1,0 +1,5 @@
+[[d1_databases]]
+    binding = "DB_BINDING"
+    database_name = "witi-users"
+    database_id = "e1b36b5d-45e1-4ce4-8f17-9690f0442084"
+
