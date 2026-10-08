@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WITI Bulletin Board</title>
     <noscript>
-        <meta http-equiv="refresh" content="0; url=./static/login/login.html">
+        <meta http-equiv="refresh" content="0; url=./static/signup/signup.html">
     </noscript>
 </head>
 <body>
@@ -28,10 +28,14 @@
         // ============================================================
 
         // Where each role lands. Keep these in sync with the real paths.
+        //
+        // "none" = not logged in. Per request, new visitors land on
+        // SIGNUP first; the signup page links across to login for
+        // people who already have an account.
         const ROUTES = {
             admin: "/static/admin/admin.html",
             user:  "/static/user/main_page.html",
-            none:  "/static/login/login.html",
+            none:  "/static/signup/signup.html",
         };
 
         const status = document.getElementById("status");

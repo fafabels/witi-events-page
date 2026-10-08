@@ -42,6 +42,44 @@ export function json(data, status = 200) {
   });
 }
 
+// --- Session cookie parsing -------------------------------------
+
+const SESSION_COOKIE_NAME = "session";
+
+/**
+ * Pull the session token out of the request's Cookie header.
+ * Returns null when the header is absent, malformed, or empty.
+ * @param {Request} request
+ * @returns {string|null}
+ */
+function readSessionToken(request) {
+  const header = request.headers.get("Cookie");
+  if (!header) return null;
+
+  // Match "session=<value>" at the start or right after a "; ".
+  const match = header.match(/(?:^|;\s*)session=([^;]*)/);
+  if (!match) return null;
+
+  let token;
+  try {
+    token = decodeURIComponent(match[1]);
+  } catch {
+    return null; // malformed percent-encoding
+  }
+
+  return token ? token.trim() : null;
+}
+
+/**
+ * Is there a well-formed session cookie on this request at all?
+ * Cheap check that touches no database -- useful for routing.
+ * @param {Request} request
+ * @returns {boolean}
+ */
+export function hasSessionCookie(request) {
+  return readSessionToken(request) !== null;
+}
+
 // ============================================================
 //  getCurrentUser
 //  Reads the session cookie and resolves it to a real user row.
@@ -50,38 +88,43 @@ export function json(data, status = 200) {
 //  The cookie holds a RANDOM 64-char token, not a user id. We
 //  hash it and join through `sessions`, so a hand-written cookie
 //  (e.g. session=1) matches no row and is simply rejected.
+//
+//  Every failure path returns null rather than throwing -- a
+//  corrupt cookie is "not logged in", not a 500.
 // ============================================================
 export async function getCurrentUser(request, env) {
-  const cookie = request.headers.get("Cookie") || "";
-  const match = cookie.match(/(?:^|;\s*)session=([^;]+)/);
-  if (!match) return null;
+  // 1. No cookie -> definitely not logged in. Skip the DB entirely.
+  const token = readSessionToken(request);
+  if (!token) return null;
 
-  const sessionToken = decodeURIComponent(match[1]);
-  if (!sessionToken) return null;
-
-  const db = env[DB_BINDING];
+  // 2. The binding must exist; that IS a configuration error, so
+  //    it throws loudly instead of silently logging everyone out.
+  const db = env?.[DB_BINDING];
   if (!db) {
-    // Fail loudly instead of throwing a confusing "undefined.prepare".
     throw new Error(
       `D1 binding "${DB_BINDING}" is missing. Check wrangler.toml.`,
     );
   }
 
-  const tokenHash = await hashSessionToken(sessionToken);
+  // 3. Look the session up by the HASH of the token. Expiry is
+  //    enforced in SQL, so a stale row can never authenticate even
+  //    if the cleanup sweep has not run yet.
   const now = Math.floor(Date.now() / 1000);
+  const tokenHash = await hashSessionToken(token);
 
-  // Expiry is enforced in SQL, so a stale row can never authenticate
-  // even if the cleanup sweep has not run yet.
-  return await db
+  const user = await db
     .prepare(
       `SELECT u.user_id, u.name, u.access
          FROM sessions s
          JOIN users u ON u.user_id = s.user_id
         WHERE s.token_hash = ?
-          AND s.expires_at > ?`,
+          AND s.expires_at > ?
+        LIMIT 1`,
     )
     .bind(tokenHash, now)
     .first();
+
+  return user ?? null;
 }
 
 // ============================================================
