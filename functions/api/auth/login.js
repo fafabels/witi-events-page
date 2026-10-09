@@ -29,11 +29,14 @@ import {
 
 // A real hash to compare against when the user does not exist, so
 // the "no such user" path costs the same time as "wrong password".
-// Generated once at module scope. Format: pbkdf2$SHA-256$1$... -- a
-// 1-iteration hash, so it is fast to build but verifyPassword still
-// does a real derive against it.
+// Format: pbkdf2$SHA-256$<iters>$<salt-b64>$<hash-b64>.
+//
+// The iteration count MUST stay <= 100000: production Workers
+// WebCrypto rejects anything higher (NotSupportedError), which would
+// turn a missing-user login into a 500. Keep this in step with
+// ITERATIONS in _utils/password.js.
 const DUMMY_HASH =
-  "pbkdf2$SHA-256$210000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+  "pbkdf2$SHA-256$100000$AAAAAAAAAAAAAAAAAAAAAA==$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
 const GENERIC_ERROR = "Invalid name or password.";
 

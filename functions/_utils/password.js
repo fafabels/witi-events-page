@@ -18,9 +18,18 @@
 //  The users.password column is plain TEXT, which fits this fine.
 // ============================================================
 
-// 210,000 is the OWASP 2023 floor for PBKDF2-HMAC-SHA256.
-// Higher = slower for an attacker, but also slower per login.
-const ITERATIONS = 210_000;
+// 100,000 is the HARD CEILING the production Cloudflare Workers
+// WebCrypto implementation enforces for PBKDF2. Asking for more
+// throws NotSupportedError:
+//
+//   Pbkdf2 failed: iteration counts above 100000 are not supported
+//
+// The local Miniflare dev runtime does NOT enforce this cap, so a
+// higher value (e.g. the OWASP 2023 figure of 210,000) silently
+// works on localhost and then 500s in production -- exactly the bug
+// that took signup down once deployed. Never raise this above
+// 100_000 without first confirming the live runtime accepts it.
+const ITERATIONS = 100_000;
 const HASH = "SHA-256";
 const KEY_BITS = 256;
 const SALT_BYTES = 16;
@@ -75,6 +84,17 @@ export async function hashPassword(password) {
   if (typeof password !== "string" || password.length === 0) {
     throw new Error("password must be a non-empty string");
   }
+
+  // Fail with a diagnosable message instead of a bare
+  // "crypto.subtle is undefined" if we ever run somewhere without
+  // WebCrypto (plain http on a non-loopback host).
+  if (!globalThis.crypto?.subtle) {
+    throw new Error(
+      "WebCrypto (crypto.subtle) is unavailable. Serve the site over " +
+        "https:// or http://localhost -- not plain http on a LAN IP.",
+    );
+  }
+
   const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
   const hash = await derive(password, salt, ITERATIONS);
   return `pbkdf2$${HASH}$${ITERATIONS}$${bytesToB64(salt)}$${bytesToB64(hash)}`;

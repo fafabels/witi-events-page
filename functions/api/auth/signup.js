@@ -159,7 +159,18 @@ export async function onRequestPost({ request, env }) {
   //    client-supplied "access" field would let anyone sign themselves
   //    up as an admin. To create the first admin, promote a row by hand:
   //        UPDATE users SET access='admin' WHERE gmail='you@gmail.com';
-  const passwordHash = await hashPassword(password);
+  //
+  //    Hashing uses WebCrypto. On a non-secure origin (plain http on a
+  //    LAN IP rather than localhost) `crypto.subtle` is undefined and
+  //    this throws -- an opaque 500 with an empty body. Surfacing it
+  //    as a 500 with a readable message beats "Signup failed."
+  let passwordHash;
+  try {
+    passwordHash = await hashPassword(password);
+  } catch (err) {
+    console.error("password hashing failed:", err);
+    return json({ error: "Server could not hash the password." }, 500);
+  }
 
   let result;
   try {
@@ -171,12 +182,18 @@ export async function onRequestPost({ request, env }) {
       .bind(name, passwordHash, studentId, email, ROLES.USER)
       .run();
   } catch (err) {
-    // A race between the SELECT above and this INSERT lands here.
+    // Distinguish the expected duplicate race from a genuine schema /
+    // integrity failure. Reporting a missing table or a failed CHECK
+    // as "already registered" sent us chasing the wrong bug.
+    const detail = String(err?.message ?? err);
+    if (/UNIQUE constraint failed/i.test(detail)) {
+      return json(
+        { error: "That student ID or email was just registered." },
+        409,
+      );
+    }
     console.error("signup insert failed:", err);
-    return json(
-      { error: "That student ID or email was just registered." },
-      409,
-    );
+    return json({ error: "Could not create the account." }, 500);
   }
 
   // 8. Auto-login: issue a session so the client can go straight in.
