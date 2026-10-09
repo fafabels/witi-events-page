@@ -180,19 +180,41 @@ export async function onRequestPost({ request, env }) {
   }
 
   // 8. Auto-login: issue a session so the client can go straight in.
-  const userId = result?.meta?.last_row_id;
-  const token = generateSessionToken();
-  const tokenHash = await hashSessionToken(token);
-  const now = Math.floor(Date.now() / 1000);
+  //
+  //    `last_row_id` is what D1 puts in `meta` for an INSERT, but we
+  //    fall back to a lookup when the driver does not supply it -- an
+  //    undefined id here would otherwise bind a value that matches no
+  //    users row and trip the sessions -> users foreign key.
+  const userId =
+    result?.meta?.last_row_id ||
+    (
+      await db
+        .prepare("SELECT user_id FROM users WHERE gmail = ?")
+        .bind(email)
+        .first()
+    )?.user_id;
 
+  //    A failure here must NOT turn an already-created account into a
+  //    500 and a confusing "Signup failed." The account exists; the
+  //    user can simply log in. So the insert is guarded and `token`
+  //    stays null when it does not succeed.
+  let token = null;
   if (userId) {
-    await db
-      .prepare(
-        `INSERT INTO sessions (token_hash, user_id, created_at, expires_at)
-         VALUES (?, ?, ?, ?)`,
-      )
-      .bind(tokenHash, userId, now, now + SESSION_TTL_SECONDS)
-      .run();
+    const candidate = generateSessionToken();
+    const tokenHash = await hashSessionToken(candidate);
+    const now = Math.floor(Date.now() / 1000);
+    try {
+      await db
+        .prepare(
+          `INSERT INTO sessions (token_hash, user_id, created_at, expires_at)
+           VALUES (?, ?, ?, ?)`,
+        )
+        .bind(tokenHash, userId, now, now + SESSION_TTL_SECONDS)
+        .run();
+      token = candidate;
+    } catch (err) {
+      console.error("session insert failed after signup:", err);
+    }
   }
 
   return new Response(
@@ -206,7 +228,7 @@ export async function onRequestPost({ request, env }) {
       status: 201,
       headers: {
         "content-type": "application/json",
-        ...(userId
+        ...(token
           ? { "Set-Cookie": buildCookie(token, SESSION_TTL_SECONDS, request.url) }
           : {}),
       },
