@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     access      TEXT    NOT NULL DEFAULT 'user'
                     CHECK (access IN ('user', 'admin')),
 
-    -- Strict student-id template: SJ, batch year, dash, 4 digits  (e.g. 2023-0001)
+    -- Strict student-id template: SJ, batch year, dash, 4 digits  (e.g. SJ23-0001)
     CONSTRAINT ck_users_student_id_format
         CHECK (student_id GLOB 'SJ[0-9][0-9]-[0-9][0-9][0-9][0-9]'), -- SJ00-0000
 
@@ -42,15 +42,16 @@ CREATE TABLE IF NOT EXISTS student_master_list (
     student_id  TEXT PRIMARY KEY,          -- the ID (one per student)
     name        TEXT NOT NULL,             -- the student's official name
 
-    -- Strict student-id template: 4 digits, dash, 4 digits  (e.g. 2023-0001)
+    -- Strict student-id template: SJ, batch year, dash, 4 digits  (e.g. SJ23-0001)
+    -- Must match the users table and the signup/admin validation exactly.
     CONSTRAINT ck_master_student_id_format
-        CHECK (student_id GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9]')
+        CHECK (student_id GLOB 'SJ[0-9][0-9]-[0-9][0-9][0-9][0-9]')
 );
 
 -- Example rows:
 --   INSERT INTO student_master_list (student_id, name) VALUES
---     ('2023-0001', 'Juan Dela Cruz'),
---     ('2023-0002', 'Maria Santos');
+--     ('SJ23-0001', 'Juan Dela Cruz'),
+--     ('SJ23-0002', 'Maria Santos');
 
 -- ============================================================
 --  Sessions — server-side session store.

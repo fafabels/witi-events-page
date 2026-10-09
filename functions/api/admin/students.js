@@ -15,7 +15,8 @@
 import { requireAdmin, json } from "../../_utils/auth.js";
 
 // --- Strict student-id template ---------------------------------
-//   4 digits, a dash, 4 digits  ->  2023-0001
+//   SJ, batch year, a dash, then 4 digits  ->  SJ23-0001
+//   Same format as schema.sql and signup.html.
 const STUDENT_ID_PATTERN = /^SJ\d{2}-\d{4}$/;
 
 // One place to validate & normalise, so every caller behaves the same.
@@ -24,7 +25,7 @@ function normalizeStudentId(raw) {
   if (!STUDENT_ID_PATTERN.test(value)) {
     return {
       ok: false,
-      error: "Student ID must look like 2023-0001 (4 digits, dash, 4 digits).",
+      error: "Student ID must look like SJ23-0001 (SJ, batch year, dash, 4 digits).",
     };
   }
   return { ok: true, value };
