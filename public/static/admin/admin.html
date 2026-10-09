@@ -3,9 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin</title>
+    <title>WITI Bulletin Board - Admin</title>
+    <link rel="stylesheet" href="../../styles/admin_styles.css">
 </head>
 <body>
-    Admin
+    <header>
+        <h1 class="main-title">WITI Admin</h1>
+        <nav id="navigation">
+            <ul>
+                <a class="nav_button" href="../user/main_page.html">Home</a>
+                <button class="nav_button" id="logout_button" type="button">Log out</button>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="gap"><p>&nbsp;</p></section>
+
+        <section class="card">
+            <h2>Add a student to the master list</h2>
+            <form id="add_student_form" novalidate>
+                <label for="student_id">Student ID:</label>
+                <input
+                    type="text"
+                    id="student_id"
+                    name="student_id"
+                    placeholder="SJ23-0001"
+                    pattern="SJ[0-9]{2}-[0-9]{4}"
+                    oninvalid="this.setCustomValidity('Use the format SJ23-0001')"
+                    oninput="this.setCustomValidity('')"
+                    required
+                >
+                <br>
+
+                <label for="student_name">Full name:</label>
+                <input
+                    type="text"
+                    id="student_name"
+                    name="student_name"
+                    placeholder="Juan Dela Cruz"
+                    required
+                >
+                <br>
+
+                <p id="message"></p>
+                <button type="submit" id="add_button">Add student</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Master list</h2>
+            <p id="list_status">Loading roster&hellip;</p>
+            <table id="roster_table" hidden>
+                <thead>
+                    <tr>
+                        <th>Student ID</th>
+                        <th>Name</th>
+                    </tr>
+                </thead>
+                <tbody id="roster_body"></tbody>
+            </table>
+        </section>
+
+        <section>
+            <footer>
+                <p>Copyright &copy; 2026 WITI Bulletin Board</p>
+            </footer>
+        </section>
+    </main>
+
+    <script>
+        // ============================================================
+        //  admin.html -- student master-list manager.
+        //
+        //  Talks to the existing admin endpoint:
+        //      GET  /api/admin/students   -> list the roster
+        //      POST /api/admin/students   -> add one student
+        //
+        //  The endpoint re-checks "is this an admin?" on every call
+        //  (requireAdmin in functions/api/admin/students.js). The guard
+        //  below is only for UX -- hiding the page from non-admins.
+        //  The browser is untrusted, so it is NOT a security boundary.
+        // ============================================================
+
+        const form = document.getElementById("add_student_form");
+        const message = document.getElementById("message");
+        const addButton = document.getElementById("add_button");
+        const listStatus = document.getElementById("list_status");
+        const rosterTable = document.getElementById("roster_table");
+        const rosterBody = document.getElementById("roster_body");
+
+        // --- 1. Page guard (UX only) --------------------------------
+        //  Ask the server who we are. A non-admin gets bounced to the
+        //  user page. A determined user could edit this JS and stay on
+        //  the page -- but every fetch below still hits requireAdmin,
+        //  so they would only see empty/403 responses.
+        async function guardAdminPage() {
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+                if (res.status === 401) {
+                    window.location.replace("/static/login/login.html");
+                    return false;
+                }
+                if (!res.ok) {
+                    window.location.replace("/static/login/login.html");
+                    return false;
+                }
+                const me = await res.json();
+                if (me.access !== "admin") {
+                    window.location.replace("/static/user/main_page.html");
+                    return false;
+                }
+                return true;
+            } catch (err) {
+                console.error("guard failed:", err);
+                window.location.replace("/static/login/login.html");
+                return false;
+            }
+        }
+
+        // --- 2. Render the roster -----------------------------------
+        function renderRoster(students) {
+            rosterBody.replaceChildren();
+
+            if (!students || students.length === 0) {
+                rosterTable.hidden = true;
+                listStatus.hidden = false;
+                listStatus.textContent = "No students on the list yet.";
+                return;
+            }
+
+            for (const student of students) {
+                const row = document.createElement("tr");
+
+                const idCell = document.createElement("td");
+                idCell.textContent = student.student_id;
+
+                const nameCell = document.createElement("td");
+                nameCell.textContent = student.name;
+
+                row.append(idCell, nameCell);
+                rosterBody.append(row);
+            }
+
+            listStatus.hidden = true;
+            rosterTable.hidden = false;
+        }
+
+        // textContent (never innerHTML) is used above so a name like
+        // "<script>" renders as literal text instead of executing.
+
+        async function loadRoster() {
+            listStatus.hidden = false;
+            listStatus.textContent = "Loading roster\u2026";
+            rosterTable.hidden = true;
+
+            try {
+                const res = await fetch("/api/admin/students", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    listStatus.textContent = data.error || "Could not load the roster.";
+                    return;
+                }
+
+                renderRoster(data.students);
+            } catch (err) {
+                console.error(err);
+                listStatus.textContent = "Could not reach the server.";
+            }
+        }
+
+        // --- 3. Add a student ---------------------------------------
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const studentId = document.getElementById("student_id").value.trim();
+            const name = document.getElementById("student_name").value.trim();
+
+            if (!studentId || !name) {
+                message.textContent = "Both fields are required.";
+                message.style.color = "red";
+                return;
+            }
+
+            addButton.disabled = true;
+            message.textContent = "Adding\u2026";
+            message.style.color = "inherit";
+
+            try {
+                const res = await fetch("/api/admin/students", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ student_id: studentId, name }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    message.textContent = data.error || "Could not add the student.";
+                    message.style.color = "red";
+                    addButton.disabled = false;
+                    return;
+                }
+
+                message.textContent = `Added ${data.student.student_id}.`;
+                message.style.color = "green";
+                form.reset();
+                addButton.disabled = false;
+
+                // Show the new entry immediately.
+                loadRoster();
+            } catch (err) {
+                console.error(err);
+                message.textContent = "Could not reach the server.";
+                message.style.color = "red";
+                addButton.disabled = false;
+            }
+        });
+
+        // --- 4. Logout ----------------------------------------------
+        document.getElementById("logout_button").addEventListener("click", async () => {
+            try {
+                await fetch("/api/auth/logout", {
+                    method: "POST",
+                    credentials: "same-origin",
+                });
+            } catch (err) {
+                console.error(err);
+            }
+            window.location.replace("/static/login/login.html");
+        });
+
+        // --- 5. Boot ------------------------------------------------
+        //  Guard first; only load the roster if we really are an admin.
+        (async () => {
+            if (await guardAdminPage()) {
+                loadRoster();
+            }
+        })();
+    </script>
 </body>
 </html>

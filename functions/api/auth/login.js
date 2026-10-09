@@ -41,19 +41,40 @@ function normalize(raw) {
   return String(raw ?? "").trim();
 }
 
-function buildCookie(token, maxAge) {
+// `url` is the request URL. `Secure` cookies are only stored by the
+// browser over HTTPS, so on a local http:// dev server the browser
+// would silently drop the session cookie and every later request
+// would look logged out. We keep `Secure` in production (any https://
+// origin) and relax it only for http:// localhost / 127.0.0.1.
+function isLocalHttp(url) {
+  try {
+    const u = new URL(url);
+    const isLoopback =
+      u.hostname === "localhost" ||
+      u.hostname === "127.0.0.1" ||
+      u.hostname === "[::1]";
+    return u.protocol === "http:" && isLoopback;
+  } catch {
+    return false;
+  }
+}
+
+function buildCookie(token, maxAge, url) {
   // HttpOnly  -> JS cannot read it (blocks XSS token theft)
-  // Secure    -> HTTPS only. Remove ONLY for local http testing.
+  // Secure    -> HTTPS only (relaxed for local http testing)
   // SameSite  -> Lax stops the cookie riding along on cross-site POSTs
   // Path      -> sent to the whole site
-  return [
+  const parts = [
     `session=${token}`,
     "HttpOnly",
-    "Secure",
     "SameSite=Lax",
     "Path=/",
     `Max-Age=${maxAge}`,
-  ].join("; ");
+  ];
+
+  if (!isLocalHttp(url)) parts.splice(2, 0, "Secure");
+
+  return parts.join("; ");
 }
 
 export async function onRequestPost({ request, env }) {
@@ -140,7 +161,7 @@ export async function onRequestPost({ request, env }) {
       status: 200,
       headers: {
         "content-type": "application/json",
-        "Set-Cookie": buildCookie(token, SESSION_TTL_SECONDS),
+        "Set-Cookie": buildCookie(token, SESSION_TTL_SECONDS, request.url),
       },
     },
   );
