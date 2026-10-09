@@ -92,9 +92,15 @@
                 const data = await res.json().catch(() => ({}));
 
                 if (!res.ok) {
-                    message.textContent = data.error || "Signup failed.";
+                    // Show the status code too. A 500 from the Worker
+                    // has no JSON body, so without this the real cause
+                    // was hidden behind the same generic message as a
+                    // 403 (student ID not on the roster).
+                    message.textContent =
+                        data.error || `Signup failed (HTTP ${res.status}).`;
                     message.style.color = "red";
                     button.disabled = false;
+                    console.error("signup failed:", res.status, data);
                     return;
                 }
 
