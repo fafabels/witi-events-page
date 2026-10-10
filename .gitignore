@@ -5,6 +5,11 @@ Thumbs.db
 *.tmp
 *.bak
 
+# Ad-hoc CLI capture files (wrangler tail output etc.). These can
+# contain real request metadata -- client IPs, geo, deployment ids.
+tail.out
+*.out
+
 dist/
 build/
 
