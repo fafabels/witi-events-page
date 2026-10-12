@@ -138,6 +138,22 @@ thead th {
     background: rgba(47, 47, 215, 0.08);
 }
 
+.remove_button {
+    font-family: inherit;
+    font-size: 13px;
+    padding: 5px 12px;
+    border: none;
+    border-radius: 8px;
+    background: rgb(183, 24, 24);
+    color: white;
+    cursor: pointer;
+}
+
+.remove_button:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
 footer {
     background: rgb(183, 24, 24);
 }

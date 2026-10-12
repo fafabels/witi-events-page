@@ -59,6 +59,7 @@
                     <tr>
                         <th>Student ID</th>
                         <th>Name</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="roster_body"></tbody>
@@ -77,8 +78,9 @@
         //  admin.html -- student master-list manager.
         //
         //  Talks to the existing admin endpoint:
-        //      GET  /api/admin/students   -> list the roster
-        //      POST /api/admin/students   -> add one student
+        //      GET    /api/admin/students   -> list the roster
+        //      POST   /api/admin/students   -> add one student
+        //      DELETE /api/admin/students   -> remove one student
         //
         //  The endpoint re-checks "is this an admin?" on every call
         //  (requireAdmin in functions/api/admin/students.js). The guard
@@ -145,12 +147,68 @@
                 const nameCell = document.createElement("td");
                 nameCell.textContent = student.name;
 
-                row.append(idCell, nameCell);
+                const actionCell = document.createElement("td");
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "remove_button";
+                removeButton.textContent = "Remove";
+                removeButton.addEventListener("click", () =>
+                    removeStudent(student.student_id, removeButton),
+                );
+                actionCell.append(removeButton);
+
+                row.append(idCell, nameCell, actionCell);
                 rosterBody.append(row);
             }
 
             listStatus.hidden = true;
             rosterTable.hidden = false;
+        }
+
+        // --- 2b. Remove a student -----------------------------------
+        //  Confirm first (deleting a roster entry is not undoable),
+        //  then DELETE the row and refresh the list.
+        async function removeStudent(studentId, button) {
+            const confirmed = window.confirm(
+                `Remove ${studentId} from the master list? This cannot be undone.`,
+            );
+            if (!confirmed) return;
+
+            button.disabled = true;
+            button.textContent = "Removing\u2026";
+
+            try {
+                const res = await fetch("/api/admin/students", {
+                    method: "DELETE",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ student_id: studentId }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    listStatus.hidden = false;
+                    listStatus.textContent =
+                        data.error || "Could not remove the student.";
+                    button.disabled = false;
+                    button.textContent = "Remove";
+                    return;
+                }
+
+                loadRoster();
+            } catch (err) {
+                console.error(err);
+                listStatus.hidden = false;
+                listStatus.textContent = "Could not reach the server.";
+                button.disabled = false;
+                button.textContent = "Remove";
+            }
         }
 
         // textContent (never innerHTML) is used above so a name like

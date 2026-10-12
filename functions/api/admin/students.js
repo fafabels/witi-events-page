@@ -2,8 +2,9 @@
 //  functions/api/admin/students.js
 //  Admin-only endpoint for the student master list.
 //
-//    GET  /api/admin/students   -> list the roster
-//    POST /api/admin/students   -> add one student  { student_id, name }
+//    GET    /api/admin/students   -> list the roster
+//    POST   /api/admin/students   -> add one student  { student_id, name }
+//    DELETE /api/admin/students   -> remove one student { student_id }
 //
 //  Deployed automatically by Cloudflare Pages (functions/ routing).
 //  Uses the D1 binding named "witi_users" from wrangler.toml.
@@ -97,4 +98,36 @@ export async function onRequestPost({ request, env }) {
     { ok: true, student: { student_id: id.value, name: name.value } },
     201,
   );
+}
+
+export async function onRequestDelete({ request, env }) {
+  // 1. AuthN + AuthZ -- only admins may remove from the roster.
+  const { error } = await requireAdmin(request, env);
+  if (error) return error;
+
+  // 2. Read + validate the body.
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ error: "Invalid JSON body." }, 400);
+  }
+
+  const id = normalizeStudentId(body.student_id);
+  if (!id.ok) return json({ error: id.error }, 422);
+
+  // 3. Delete the row. A student that is not on the list is a 404.
+  const result = await env.witi_users
+    .prepare("DELETE FROM student_master_list WHERE student_id = ?")
+    .bind(id.value)
+    .run();
+
+  if (result.meta.changes === 0) {
+    return json(
+      { error: `Student ID ${id.value} is not on the list.` },
+      404,
+    );
+  }
+
+  return json({ ok: true, removed: id.value });
 }
