@@ -95,3 +95,11 @@ footer p {
 footer a {
     color: white;
 }
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
