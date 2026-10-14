@@ -2,6 +2,7 @@ body {
     margin: 0px;
     font-family: 'Playfair Display', serif;
 }
+
 body::before {
     content: "";
     position: fixed;   /* fixed instead of absolute */
@@ -9,13 +10,17 @@ body::before {
     width: 100vw;      /* full viewport width */
     height: 100dvh;    /* dynamic viewport height */
     background: url("../assets/bg_image.jpg")  center/cover no-repeat;
-    filter: blur(10px);
+    filter: blur(4px);
     z-index: -1;         /* behind everything else */
 }
 
 h1, h2, h3, h4, h5, h6 {
     margin: 0px;
     font-family: 'Playfair Display', serif;
+}
+
+p {
+    font-size: 12px;
 }
 
 #main_sections {
@@ -25,6 +30,7 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     place-content: center;
 }
+
 #navigation {
     place-content: center;
     font-size: 12px;
@@ -77,10 +83,13 @@ header {
     opacity: 0;
 }
 
+ul {
+    padding: 0;
+}
+
 footer {
     background: rgb(183, 24, 24);
     padding-top: 20px;
-
 }
 
 footer p {
