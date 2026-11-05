@@ -52,6 +52,76 @@
         </section>
 
         <section class="card">
+            <h2>Post an announcement</h2>
+            <form id="add_announcement_form" novalidate>
+                <label for="ann_message">Message:</label>
+                <input
+                    type="text"
+                    id="ann_message"
+                    name="ann_message"
+                    placeholder="Classes resume on Monday"
+                    maxlength="200"
+                    required
+                >
+                <br>
+
+                <label for="ann_detail">Details:</label>
+                <textarea
+                    id="ann_detail"
+                    name="ann_detail"
+                    rows="3"
+                    maxlength="2000"
+                    placeholder="Shown when the message is clicked or hovered (optional)"
+                ></textarea>
+                <br>
+
+                <p id="ann_message_status"></p>
+                <button type="submit" id="add_announcement_button">Post announcement</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Post an event</h2>
+            <form id="add_event_form" novalidate>
+                <label for="event_kind">Board:</label>
+                <select id="event_kind" name="event_kind">
+                    <option value="school">School Events</option>
+                    <option value="club">Club Events</option>
+                </select>
+                <br>
+
+                <label for="event_message">Event:</label>
+                <input
+                    type="text"
+                    id="event_message"
+                    name="event_message"
+                    placeholder="Foundation Day parade"
+                    maxlength="200"
+                    required
+                >
+                <br>
+
+                <label for="event_date">Date:</label>
+                <input
+                    type="date"
+                    id="event_date"
+                    name="event_date"
+                    required
+                >
+                <br>
+
+                <p id="event_status"></p>
+                <button type="submit" id="add_event_button">Post event</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Bulletin content</h2>
+            <p id="content_status">Loading bulletin&hellip;</p>
+            <div id="content_list"></div>
+        </section>
+
+        <section class="card">
             <h2>Master list</h2>
             <p id="list_status">Loading roster&hellip;</p>
             <table id="roster_table" hidden>
@@ -298,6 +368,307 @@
             }
         });
 
+        // --- 3b. Bulletin content (announcements + events) ----------
+        //  Same endpoint the bulletin page reads:
+        //      GET    /api/bulletin   -> { announcements, events }
+        //      POST   /api/bulletin   -> add one item
+        //      DELETE /api/bulletin   -> remove one item
+        const announcementForm = document.getElementById("add_announcement_form");
+        const announcementStatus = document.getElementById("ann_message_status");
+        const announcementButton = document.getElementById("add_announcement_button");
+        const eventForm = document.getElementById("add_event_form");
+        const eventStatus = document.getElementById("event_status");
+        const eventButton = document.getElementById("add_event_button");
+        const contentStatus = document.getElementById("content_status");
+        const contentList = document.getElementById("content_list");
+
+        // "July 20, 2020" from "2020-07-20". Parsed as UTC so the
+        // displayed day never shifts by one in a negative timezone.
+        function formatEventDate(isoDate) {
+            const [y, m, d] = String(isoDate).split("-").map(Number);
+            const date = new Date(Date.UTC(y, m - 1, d));
+            return date.toLocaleDateString("en-US", {
+                month: "long",
+                day: "numeric",
+                year: "numeric",
+                timeZone: "UTC",
+            });
+        }
+
+        function setStatus(el, text, color) {
+            el.textContent = text;
+            el.style.color = color || "inherit";
+        }
+
+        function makeRemoveButton(type, id, label) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "remove_button";
+            button.textContent = "Remove";
+            button.addEventListener("click", () =>
+                removeBulletinItem(type, id, label, button),
+            );
+            return button;
+        }
+
+        function renderContent(data) {
+            contentList.replaceChildren();
+
+            const announcements = data.announcements || [];
+            const events = data.events || [];
+
+            if (announcements.length === 0 && events.length === 0) {
+                contentStatus.hidden = false;
+                contentStatus.textContent = "Nothing posted yet.";
+                return;
+            }
+            contentStatus.hidden = true;
+
+            // Announcements
+            const annHeading = document.createElement("h3");
+            annHeading.textContent = "Announcements";
+            contentList.append(annHeading);
+
+            if (announcements.length === 0) {
+                const empty = document.createElement("p");
+                empty.textContent = "No announcements.";
+                contentList.append(empty);
+            }
+
+            for (const item of announcements) {
+                const row = document.createElement("div");
+                row.className = "content_row";
+
+                const text = document.createElement("div");
+                const main = document.createElement("p");
+                main.className = "content_main";
+                main.textContent = item.message;
+                text.append(main);
+
+                if (item.detail) {
+                    const detail = document.createElement("p");
+                    detail.className = "content_detail";
+                    detail.textContent = item.detail;
+                    text.append(detail);
+                }
+
+                row.append(
+                    text,
+                    makeRemoveButton("announcement", item.id, item.message),
+                );
+                contentList.append(row);
+            }
+
+            // Events
+            const eventHeading = document.createElement("h3");
+            eventHeading.textContent = "Events";
+            contentList.append(eventHeading);
+
+            if (events.length === 0) {
+                const empty = document.createElement("p");
+                empty.textContent = "No events.";
+                contentList.append(empty);
+            }
+
+            for (const item of events) {
+                const row = document.createElement("div");
+                row.className = "content_row";
+
+                const text = document.createElement("div");
+                const main = document.createElement("p");
+                main.className = "content_main";
+                main.textContent = item.message;
+
+                const meta = document.createElement("p");
+                meta.className = "content_detail";
+                meta.textContent = `${item.kind === "club" ? "Club" : "School"} \u00b7 ${formatEventDate(item.date)}`;
+
+                text.append(main, meta);
+                row.append(
+                    text,
+                    makeRemoveButton("event", item.id, item.message),
+                );
+                contentList.append(row);
+            }
+        }
+
+        async function loadContent() {
+            contentStatus.hidden = false;
+            contentStatus.textContent = "Loading bulletin\u2026";
+
+            try {
+                const res = await fetch("/api/bulletin", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    contentStatus.textContent =
+                        data.error || "Could not load the bulletin.";
+                    return;
+                }
+
+                renderContent(data);
+            } catch (err) {
+                console.error(err);
+                contentStatus.textContent = "Could not reach the server.";
+            }
+        }
+
+        async function removeBulletinItem(type, id, label, button) {
+            const confirmed = window.confirm(
+                `Remove "${label}" from the bulletin? This cannot be undone.`,
+            );
+            if (!confirmed) return;
+
+            button.disabled = true;
+            button.textContent = "Removing\u2026";
+
+            try {
+                const res = await fetch("/api/bulletin", {
+                    method: "DELETE",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ type, id }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    contentStatus.hidden = false;
+                    contentStatus.textContent =
+                        data.error || "Could not remove the item.";
+                    button.disabled = false;
+                    button.textContent = "Remove";
+                    return;
+                }
+
+                loadContent();
+            } catch (err) {
+                console.error(err);
+                contentStatus.hidden = false;
+                contentStatus.textContent = "Could not reach the server.";
+                button.disabled = false;
+                button.textContent = "Remove";
+            }
+        }
+
+        announcementForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const messageText = document.getElementById("ann_message").value.trim();
+            const detailText = document.getElementById("ann_detail").value.trim();
+
+            if (!messageText) {
+                setStatus(announcementStatus, "The message is required.", "red");
+                return;
+            }
+
+            announcementButton.disabled = true;
+            setStatus(announcementStatus, "Posting\u2026");
+
+            try {
+                const res = await fetch("/api/bulletin", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                        type: "announcement",
+                        message: messageText,
+                        detail: detailText,
+                    }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    setStatus(
+                        announcementStatus,
+                        data.error || "Could not post the announcement.",
+                        "red",
+                    );
+                    announcementButton.disabled = false;
+                    return;
+                }
+
+                setStatus(announcementStatus, "Announcement posted.", "green");
+                announcementForm.reset();
+                announcementButton.disabled = false;
+                loadContent();
+            } catch (err) {
+                console.error(err);
+                setStatus(announcementStatus, "Could not reach the server.", "red");
+                announcementButton.disabled = false;
+            }
+        });
+
+        eventForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const kind = document.getElementById("event_kind").value;
+            const messageText = document.getElementById("event_message").value.trim();
+            const dateValue = document.getElementById("event_date").value;
+
+            if (!messageText || !dateValue) {
+                setStatus(eventStatus, "The event and its date are required.", "red");
+                return;
+            }
+
+            eventButton.disabled = true;
+            setStatus(eventStatus, "Posting\u2026");
+
+            try {
+                const res = await fetch("/api/bulletin", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({
+                        type: "event",
+                        kind,
+                        message: messageText,
+                        date: dateValue,
+                    }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main_page.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    setStatus(
+                        eventStatus,
+                        data.error || "Could not post the event.",
+                        "red",
+                    );
+                    eventButton.disabled = false;
+                    return;
+                }
+
+                setStatus(eventStatus, "Event posted.", "green");
+                eventForm.reset();
+                eventButton.disabled = false;
+                loadContent();
+            } catch (err) {
+                console.error(err);
+                setStatus(eventStatus, "Could not reach the server.", "red");
+                eventButton.disabled = false;
+            }
+        });
+
         // --- 4. Logout ----------------------------------------------
         document.getElementById("logout_button").addEventListener("click", async () => {
             try {
@@ -316,6 +687,7 @@
         (async () => {
             if (await guardAdminPage()) {
                 loadRoster();
+                loadContent();
             }
         })();
     </script>

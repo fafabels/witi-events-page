@@ -81,3 +81,40 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
 
 -- Expired-row sweeps filter on expires_at.
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
+
+-- ============================================================
+--  Bulletin content — what the bulletin page displays.
+--
+--  announcements  -> #a_con   (short message + click/hover detail)
+--  events         -> #se_ann_con (kind = 'school') and
+--                    #ce_ann_con (kind = 'club')
+--
+--  event_date is stored as TEXT in strict YYYY-MM-DD form so it
+--  sorts correctly with a plain ORDER BY. The admin page takes a
+--  date picker and the bulletin page formats it as "July 20, 2020".
+-- ============================================================
+
+DROP TABLE IF EXISTS announcements;
+
+CREATE TABLE IF NOT EXISTS announcements (
+    announcement_id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    message          TEXT NOT NULL,          -- the short line shown on the board
+    detail           TEXT NOT NULL DEFAULT '', -- shown on click / hover
+    created_at       INTEGER NOT NULL        -- epoch seconds
+);
+
+DROP TABLE IF EXISTS events;
+
+CREATE TABLE IF NOT EXISTS events (
+    event_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind        TEXT NOT NULL
+                    CHECK (kind IN ('school', 'club')),   -- which column it lands in
+    message     TEXT NOT NULL,                            -- what is going to happen
+    event_date  TEXT NOT NULL,                            -- YYYY-MM-DD
+    created_at  INTEGER NOT NULL,                         -- epoch seconds
+
+    CONSTRAINT ck_events_date_format
+        CHECK (event_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_kind_date ON events (kind, event_date);

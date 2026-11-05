@@ -93,13 +93,51 @@ form label {
     width: 110px;
 }
 
-form input {
+form input, form textarea, form select {
     font-family: inherit;
     font-size: 15px;
     padding: 6px 10px;
     margin: 6px 0;
     border: 1px solid rgba(0, 0, 0, 0.25);
     border-radius: 8px;
+}
+
+form textarea {
+    width: 100%;
+    max-width: 520px;
+    vertical-align: top;
+    resize: vertical;
+}
+
+#ann_message_status, #event_status {
+    min-height: 20px;
+    margin: 12px 0;
+}
+
+/* --- Bulletin content list ---------------------------------- */
+#content_list h3 {
+    margin: 18px 0 8px;
+}
+
+.content_row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.content_main {
+    margin: 0;
+    font-weight: bold;
+}
+
+.content_detail {
+    margin: 2px 0 0;
+    font-size: 13px;
+    opacity: 0.75;
+    white-space: pre-wrap;
 }
 
 #message, #list_status {

@@ -57,6 +57,92 @@ h1, h2, h3, h4, h5, h6 {
     margin: 10px;
 }
 
+/* --- a_con: announcements ---------------------------------- */
+#a_list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.announcement {
+    background: white;
+    border-left: 5px solid rgb(223, 33, 33);
+    border-radius: 10px;
+    padding: 10px 14px;
+    position: relative;
+}
+
+.announcement_message {
+    margin: 0;
+    font-weight: bold;
+}
+
+/* Announcements with details are clickable / hoverable. */
+.announcement.has_detail {
+    cursor: pointer;
+}
+
+.announcement.has_detail .announcement_message::after {
+    content: " \25BE";   /* small down arrow */
+    font-size: 11px;
+    opacity: 0.6;
+}
+
+.announcement.has_detail:hover,
+.announcement.has_detail:focus-visible {
+    background: rgb(255, 245, 245);
+    outline: none;
+}
+
+/* The detail is hidden until the card is hovered, focused, or
+   clicked open. max-height (not display) keeps the transition. */
+.announcement_detail {
+    margin: 0;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    font-size: 14px;
+    transition: max-height 0.2s ease, opacity 0.2s ease, margin 0.2s ease;
+}
+
+.announcement.has_detail:hover .announcement_detail,
+.announcement.has_detail:focus-visible .announcement_detail,
+.announcement.has_detail.open .announcement_detail {
+    max-height: 400px;
+    opacity: 1;
+    margin-top: 8px;
+}
+
+/* --- se_con / ce_con: events -------------------------------- */
+.event {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.event:last-child {
+    border-bottom: none;
+}
+
+.event_message {
+    margin: 0;
+}
+
+.event_date {
+    margin: 0;
+    font-size: 13px;
+    white-space: nowrap;
+    color: rgb(90, 90, 110);
+}
+
+.empty_note {
+    margin: 0;
+    opacity: 0.7;
+}
+
 p {
     font-size: 15px;
 }
