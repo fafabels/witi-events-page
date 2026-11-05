@@ -28,7 +28,7 @@
                     <h2>Announcements</h2>
                     <div id="a_con">
                         <div class="margin_con" id="a_list">
-                            No announcements
+                            <p class="empty_note">No announcements</p>
                         </div>
                     </div>
                 </article>
@@ -91,7 +91,8 @@
             //      events:        [{ id, kind, message, date }] }
             //
             //  a_con    <- announcements. The short message is shown;
-            //              clicking it (or hovering) reveals `detail`.
+            //              clicking it (or hovering) reveals `detail`
+            //              directly below the message.
             //  se_con   <- events with kind === "school"
             //  ce_con   <- events with kind === "club"
             //              Each event shows its message and its date
@@ -127,6 +128,9 @@
             }
 
             // --- a_con: announcement + click/hover detail -----------
+            //  Same row shape as an event: message on the left, and the
+            //  detail sits directly BELOW the message. The detail is
+            //  hidden until the row is hovered, focused, or clicked.
             function renderAnnouncements(announcements) {
                 if (!announcements || announcements.length === 0) {
                     showEmpty(aList, "No announcements");
@@ -136,34 +140,37 @@
                 aList.replaceChildren();
 
                 for (const item of announcements) {
-                    const card = document.createElement("div");
-                    card.className = "announcement";
+                    const row = document.createElement("div");
+                    row.className = "announcement";
+
+                    const text = document.createElement("div");
+                    text.className = "announcement_text";
 
                     const message = document.createElement("p");
                     message.className = "announcement_message";
                     message.textContent = item.message;
-                    card.append(message);
+                    text.append(message);
 
                     // Only announcements that actually have details get
-                    // the click/hover behaviour and the "Details" hint.
+                    // the click/hover behaviour and the arrow hint.
                     if (item.detail) {
-                        card.classList.add("has_detail");
-                        card.tabIndex = 0; // keyboard reachable
-                        card.setAttribute("role", "button");
-                        card.setAttribute("aria-expanded", "false");
+                        row.classList.add("has_detail");
+                        row.tabIndex = 0; // keyboard reachable
+                        row.setAttribute("role", "button");
+                        row.setAttribute("aria-expanded", "false");
 
                         const detail = document.createElement("p");
                         detail.className = "announcement_detail";
                         detail.textContent = item.detail;
-                        card.append(detail);
+                        text.append(detail);
 
                         const toggle = () => {
-                            const open = card.classList.toggle("open");
-                            card.setAttribute("aria-expanded", String(open));
+                            const open = row.classList.toggle("open");
+                            row.setAttribute("aria-expanded", String(open));
                         };
 
-                        card.addEventListener("click", toggle);
-                        card.addEventListener("keydown", (e) => {
+                        row.addEventListener("click", toggle);
+                        row.addEventListener("keydown", (e) => {
                             if (e.key === "Enter" || e.key === " ") {
                                 e.preventDefault();
                                 toggle();
@@ -171,7 +178,8 @@
                         });
                     }
 
-                    aList.append(card);
+                    row.append(text);
+                    aList.append(row);
                 }
             }
 
