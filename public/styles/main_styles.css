@@ -10,7 +10,7 @@ body::before {
     width: 100vw;      /* full viewport width */
     height: 100dvh;    /* dynamic viewport height */
     background: url("../assets/bg_image.jpg")  center/cover no-repeat;
-    filter: blur(4px);
+    filter: brightness(70%) blur(4px);
     z-index: -1;         /* behind everything else */
 }
 
@@ -20,7 +20,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 p {
-    font-size: 12px;
+    font-size: 15px;
 }
 
 #main_sections {
@@ -59,13 +59,14 @@ header {
 .slides {
     background: linear-gradient(to right, rgba(229, 223, 223, 0.105), rgba(255, 255, 255, 0.819));
     box-shadow: 10px 10px rgba(0, 0, 0, 0.09);
-    width: 50%;
+    /*width: 50%;*/
     place-self: center;
     border-radius: 20px;
-    margin: 40px;
+    margin: 20px;
     font-size: 30px;
-    padding-top: 30px;
-    transform: translateY(20px);
+    /*padding-top: 30px;
+    transform: translateY(20px);*/
+    padding: 2% 5%;
     animation: slideDown 1s linear;
 }
 

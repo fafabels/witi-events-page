@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WITI Bulletin</title>
+        <link rel="stylesheet" href="../../styles/bulletin_styles.css">
+    </head>
+    <body>
+        <header>
+            <h1 class="main-title">WITI Bulletin Board</h1>
+            <nav id="navigation">
+                <ul>
+                    <a class="nav_button" href="./main_page.html">Home</a>
+                    <a class="nav_button" href="./bulletin.html">Bulletin</a>
+                    <a class="nav_button" href="./account.html">Account</a>
+                    <a class="nav_button" href="./settings.html">Settings</a>
+                </ul>
+            </nav>
+        </header>
+        <main>
+            <section class="gap">
+                <p>a</p>
+            </section>
+
+            <section id="announcement">
+                <article class="" id="school_announcement">
+                    <h2>Announcements</h2>
+                    <div id="a_con">
+                        <div class="margin_con">
+                            No announcements
+                        </div>
+                    </div>
+                </article>
+            </section>
+            <section class="gap">
+                <p>a</p>
+            </section>
+            <section id="events">
+                <article class="events_con">
+                    <div class="margin_con">
+                        <h2>School Events</h2>
+                        <div id="se_ann_con">
+                            No events
+                        </div>
+                    </div>
+                    
+                </article>
+                <article class="events_con">
+                    <div class="margin_con">
+                        <h2>Club Events</h2>
+                        <div id="ce_ann_con">
+                            No events
+                        </div>
+                    </div>
+                    
+                </article>
+            </section>
+            <section class="gap">
+                <p>a</p>
+            </section>
+            <section>
+                <footer>
+                    <p>Copyright &copy; 2026 WITI Bulletin Board</p>
+                    <!--
+                    <div class="footer-header">
+                    </div>
+                    -->
+                    
+                    <div class="footer-redirections">
+                        <div class="footer-links">
+                            <p>Contacts:</p>
+                            <a href="https://web.facebook.com/profile.php?id=61568071182115" target="_blank">Follow us on Facebook</a>
+                        </div>
+                        <div class="footer-sections">
+                            <p>Sections:</p>
+                            <a href="#about">About</a>
+                            <a href="#get-started">Get Started</a>
+                        </div>
+                    </div>
+                    
+                </footer>
+            </section>
+        </main>
+        <!--
+        <script>
+            // ============================================================
+            //  main_page.html -- session gate (UX only).
+            //
+            //  Ask the server who we are. Not logged in -> login page.
+            //  This is a convenience, NOT a security boundary: the
+            //  browser is untrusted and someone can edit this script.
+            //  Real enforcement is requireUser/requireAdmin on the
+            //  endpoints that return actual data.
+            // ============================================================
+            (async () => {
+                try {
+                    const res = await fetch("/api/me", {
+                        credentials: "same-origin",
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) {
+                        window.location.replace("/static/login/login.html");
+                    }
+                } catch (err) {
+                    console.error("session check failed:", err);
+                    window.location.replace("/static/login/login.html");
+                }
+            })();
+        </script>
+    -->
+    </body>
+</html>

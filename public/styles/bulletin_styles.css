@@ -1,0 +1,168 @@
+body {
+    margin: 0px;
+    font-family: 'Playfair Display', serif;
+}
+
+body::before {
+    content: "";
+    position: fixed;   /* fixed instead of absolute */
+    top: 0; left: 0;
+    width: 100vw;      /* full viewport width */
+    height: 100dvh;    /* dynamic viewport height */
+    /*background: url("../assets/bg_image.jpg")  center/cover no-repeat;*/
+    background: rgb(37, 77, 165);
+    filter: blur(4px);
+    z-index: -1;         /* behind everything else */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0px;
+    font-family: 'Playfair Display', serif;
+}
+
+#school_announcement {
+    background: rgb(223, 33, 33);
+    
+    border-radius: 20px;
+    place-self: center;
+    width: 50%;
+    padding: 1% 5%;
+}
+
+#a_con {
+    background: rgb(230, 230, 238);
+    border-radius: 20px;
+}
+
+#events {
+    display: flex;
+    place-self: center;
+    width: 80%;
+}
+
+.events_con {
+    background: rgb(219, 219, 227);
+    border-radius: 20px;
+    width: 50%;
+    margin: 2px;
+}
+
+#se_ann_con, #ce_ann_con {
+    background: rgb(239, 239, 245);
+    border-radius: 20px;
+    padding: 1% 5%;
+}
+
+.margin_con {
+    margin: 10px;
+}
+
+p {
+    font-size: 15px;
+}
+
+.gap {
+    margin: 50px;
+    opacity: 0;
+}
+
+#navigation {
+    place-content: center;
+    font-size: 12px;
+}
+
+.nav_button {
+    margin: 0 40px 0 40px;
+    text-align: center;
+    color: white;
+}
+
+header {
+    text-align: center;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 2;
+}
+header::before {
+    content: "";
+    position: fixed;   /* fixed instead of absolute */
+    top: 0; left: 0;
+    width: 100%;      /* full viewport width */
+    height: 14%;    /* dynamic viewport height */
+    background: url("../assets/bg_image.jpg")  center/cover no-repeat;
+    filter: blur(1px);
+    z-index: -2;         /* behind everything else */
+}
+
+header::after {
+    content: "";
+    position: fixed;   /* fixed instead of absolute */
+    top: 0; left: 0;
+    width: 100%;      /* full viewport width */
+    height: 14%;    /* dynamic viewport height */
+    background: rgb(255, 1, 1);
+    filter: blur(2px);
+    opacity: 0.5;
+    z-index: -1;         /* behind everything else */
+}
+
+.main-title {
+    color: white;
+    font-size: 30px;
+}
+
+ul {
+    padding: 0;
+}
+
+footer {
+    background: rgb(183, 24, 24);
+    padding-top: 20px;
+}
+
+footer p {
+    margin: 0px;
+    text-align: center;
+}
+
+footer p {
+    color: white;
+}
+
+footer a {
+    color: white;
+}
+
+.footer-redirections {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.footer-header {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    flex-direction: column;
+}
+
+.footer-sections {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    flex-direction: column;
+}
