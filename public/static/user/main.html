@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WITI Bulletin</title>
+        <link rel="stylesheet" href="../../styles/main_styles.css">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Kameron:wght@400..700&family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Kameron:wght@400..700&family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Serif+Display:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <header>
+            <h1 class="main-title">WITI Bulletin Board</h1>
+            <nav id="navigation">
+                <ul>
+                    <a class="nav_button" href="./main_page.html">Home</a>
+                    <a class="nav_button" href="./bulletin.html">Bulletin</a>
+                    <a class="nav_button" href="./account.html">Account</a>
+                    <a class="nav_button" href="./settings.html">Settings</a>
+                </ul>
+            </nav>
+        </header>
+        <main>
+            <section id="welcome">
+                <h1>Welcome to WestBridge!</h1>
+            </section>
+            
+            
+            <section id="gradient">
+                <section id="intro">
+                    <article class="intro-con">
+                        <h2>About Us</h2>
+                        <p>Were oiasfhpIUFHoiausfhkuadshl</p>
+                    </article>
+                </section>
+            </section>
+        </main>
+        <!--
+        <script>
+            // ============================================================
+            //  main_page.html -- session gate (UX only).
+            //
+            //  Ask the server who we are. Not logged in -> login page.
+            //  This is a convenience, NOT a security boundary: the
+            //  browser is untrusted and someone can edit this script.
+            //  Real enforcement is requireUser/requireAdmin on the
+            //  endpoints that return actual data.
+            // ============================================================
+            (async () => {
+                try {
+                    const res = await fetch("/api/me", {
+                        credentials: "same-origin",
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) {
+                        window.location.replace("/static/login/login.html");
+                    }
+                } catch (err) {
+                    console.error("session check failed:", err);
+                    window.location.replace("/static/login/login.html");
+                }
+            })();
+        </script>
+    -->
+    </body>
+</html>

@@ -45,8 +45,6 @@ p {
 header {
     text-align: center;
     background: rgb(47, 47, 215);
-    position: fixed;
-    top: 0;
     width: 100%;
     z-index: 2;
 }
@@ -137,4 +135,24 @@ footer a {
     flex-wrap: wrap;
     margin-top: 10px;
     flex-direction: column;
+}
+
+#welcome {
+    text-align: left;
+    font-size: 50px;
+    width: 50%;
+    margin: 20px;
+    color: white;
+}
+
+#gradient::before {
+    content: "";
+
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    filter: blur(10px);
+    height: 100px;
+    background: white;
 }
