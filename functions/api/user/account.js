@@ -127,11 +127,17 @@ export async function onRequestGet({ request, env }) {
   const db = env[DB_BINDING];
   if (!db) return json({ error: "Server misconfigured." }, 500);
 
-  // The session lookup only carries a few columns; read the full row
-  // so the page can show exactly what was entered at signup.
+  // Read the row by user_id, not from the session object, so these
+  // values are the stored ones. Columns are aliased to the exact keys
+  // the JSON below uses -- a positional mix-up between student_id and
+  // gmail (which sit next to each other in this table) is then
+  // impossible, whichever order the driver returns them in.
   const row = await db
     .prepare(
-      `SELECT name, gmail, student_id, access
+      `SELECT name        AS name,
+              gmail       AS gmail,
+              student_id  AS student_id,
+              access      AS access
          FROM users
         WHERE user_id = ?`,
     )
@@ -153,9 +159,13 @@ export async function onRequestGet({ request, env }) {
     .bind(user.user_id, now)
     .first();
 
+  // If the stored gmail does not look like an address, say so instead
+  // of printing whatever is in the column next to the student id.
+  const gmail = String(row.gmail ?? "").trim();
+
   return json({
     name: row.name,
-    gmail: row.gmail,
+    gmail: EMAIL_RULE.test(gmail) ? gmail : null,
     student_id: row.student_id,
     access: row.access === ROLES.ADMIN ? ROLES.ADMIN : ROLES.USER,
     pending_email: pending?.new_email ?? null,

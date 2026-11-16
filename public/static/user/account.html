@@ -155,31 +155,40 @@
             }
 
             async function loadAccount() {
-                const me = await fetch("/api/me", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-
-                if (!me.ok) {
-                    showLoggedOut();
-                    return;
-                }
-
+                // /api/user/account is the authority: it re-reads the row
+                // from `users` using the session, so every field it sends
+                // is the stored one. Ask it FIRST -- /api/me is only used
+                // to tell "logged out" apart from "something broke", and
+                // a 401 from here is the same answer /api/me would give.
                 const account = await fetch("/api/user/account", {
                     credentials: "same-origin",
                     headers: { Accept: "application/json" },
                 });
 
+                if (account.status === 401) {
+                    showLoggedOut();
+                    return;
+                }
+
                 if (!account.ok) {
+                    // Logged in, but the details could not be read.
+                    // Show the notice rather than an empty card.
+                    console.error("account details failed:", account.status);
                     showLoggedOut();
                     return;
                 }
 
                 const data = await account.json();
 
-                document.getElementById("acc_name").textContent = data.name || "\u2014";
-                document.getElementById("acc_student_id").textContent = data.student_id || "\u2014";
-                document.getElementById("acc_gmail").textContent = data.gmail || "\u2014";
+                // Each field is written to the element named after it.
+                // Kept explicit (not a loop over a shared list) so the
+                // gmail cannot be paired with the student-id element.
+                document.getElementById("acc_name").textContent =
+                    data.name || "\u2014";
+                document.getElementById("acc_student_id").textContent =
+                    data.student_id || "\u2014";
+                document.getElementById("acc_gmail").textContent =
+                    data.gmail || "(no email on file)";
                 document.getElementById("acc_role").textContent =
                     data.access === "admin" ? "Administrator" : "Student";
                 document.getElementById("account_greeting").textContent =
@@ -195,6 +204,12 @@
                 }
 
                 // Details only become visible AFTER the data arrives.
+                // The email form is pointed at the address shown above,
+                // so "New gmail" starts from a known-good value.
+                const currentEmail = data.gmail || "";
+                document.getElementById("new_email").placeholder =
+                    currentEmail || "example@gmail.com";
+
                 locked.hidden = true;
                 details.hidden = false;
             }
