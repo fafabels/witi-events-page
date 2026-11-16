@@ -76,6 +76,12 @@
                         Your gmail only changes after you open that link.
                     </p>
 
+                    <!-- Read-only context: whose account is being changed.
+                         Filled by the script once the details load. -->
+                    <label for="email_student_id">Student ID</label>
+                    <input type="text" id="email_student_id" class="readonly_field"
+                           value="\u2014" readonly tabindex="-1" aria-readonly="true">
+
                     <label for="new_email">New gmail</label>
                     <input type="email" id="new_email" name="newEmail"
                            placeholder="example@gmail.com" autocomplete="email" required>
@@ -209,6 +215,10 @@
                 const currentEmail = data.gmail || "";
                 document.getElementById("new_email").placeholder =
                     currentEmail || "example@gmail.com";
+
+                // The Change Gmail form shows which student's account it is.
+                document.getElementById("email_student_id").value =
+                    data.student_id || "\u2014";
 
                 locked.hidden = true;
                 details.hidden = false;
