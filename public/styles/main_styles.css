@@ -145,14 +145,75 @@ footer a {
     color: white;
 }
 
+#gradient {
+    position: relative;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.35) 25%,
+        rgba(255, 255, 255, 0.75) 60%,
+        rgba(255, 255, 255, 0.95) 100%
+    );
+    /* keep the scrollbar from sitting on top of the content */
+    scrollbar-gutter: stable;
+}
+
+
+.gradient-content {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+}
+
+/*every direct child is a block that stacks under the previous one*/
+.gradient-content > * {
+    display: block;
+    margin-bottom: 24px;
+}
+
+.gradient-content > *:last-child {
+    margin-bottom: 0;
+}
+
+
 #gradient::before {
     content: "";
-
     position: absolute;
-    bottom: 0;
-    right: 0;
     left: 0;
-    filter: blur(10px);
-    height: 100px;
-    background: white;
+    right: 0;
+    bottom: 0;
+    height: 120px;
+    pointer-events: none;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.9) 100%
+    );
+    z-index: 1;
+}
+
+
+#intro {
+    display: flex;
+    flex-direction: row;
+}
+
+.intro-con {
+    margin: 20px;
+    width: 50%;
+    display: block;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 20px;
+    padding: 20px 25px;
+    box-shadow: 10px 10px rgba(0, 0, 0, 0.09);
 }
