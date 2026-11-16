@@ -3,27 +3,319 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WITI Bulletin</title>
+    <title>WITI Bulletin - Account</title>
     <link rel="stylesheet" href="../../styles/main_styles.css">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
 </head>
 <body>
     <header>
         <h1 class="main-title">WITI Bulletin Board</h1>
+        <nav id="navigation">
+            <ul>
+                <a class="nav_button" href="./main_page.html">Home</a>
+                <a class="nav_button" href="./bulletin.html">Bulletin</a>
+                <a class="nav_button" href="./account.html">Account</a>
+                <a class="nav_button" href="./settings.html">Settings</a>
+            </ul>
+        </nav>
     </header>
     <main>
-        <section>
-            <article id="profile">
-                <img>
-                <h2 id="name"></h2>
-                <h3 id="g_s"></h3>
+        <!-- ============================================================
+             Account
+
+             Order matters: the logged-out notice is the FIRST thing in
+             the section and the details below it start hidden, so a
+             visitor never sees a flash of account fields. The script at
+             the bottom of this file asks /api/me and reveals exactly one
+             of the two blocks.
+
+             The hiding is cosmetic -- /api/user/account returns 401 to
+             anyone without a session, so the data simply does not exist
+             in the browser while logged out.
+             ============================================================ -->
+        <section id="account" class="account_section">
+
+            <!-- Shown when NOT logged in (first thing in the section). -->
+            <article id="account_locked" class="account_card">
+                <h2>Account settings</h2>
+                <p class="account_note">
+                    You need to log in to see your account details.
+                </p>
+                <div class="account_actions">
+                    <a class="account_button primary" href="../login/login.html">Log in</a>
+                    <a class="account_button" href="../signup/signup.html">Sign up</a>
+                </div>
             </article>
 
-            <article id="info">
-                <button id="gmail">gmail</button>
-                <button id="password">password</button>
-                <button id="studentId">student id</button>
-            </article>
+            <!-- Shown SECONDARILY, after the session check succeeds. -->
+            <div id="account_details" class="account_card" hidden>
+                <h2>Account settings</h2>
+                <p id="account_greeting" class="account_note"></p>
+
+                <dl class="account_info">
+                    <dt>Name</dt>
+                    <dd id="acc_name">&mdash;</dd>
+                    <dt>Student ID</dt>
+                    <dd id="acc_student_id">&mdash;</dd>
+                    <dt>Gmail</dt>
+                    <dd id="acc_gmail">&mdash;</dd>
+                    <dt>Role</dt>
+                    <dd id="acc_role">&mdash;</dd>
+                </dl>
+
+                <!-- --- Change gmail ----------------------------------
+                     Nothing changes until the confirmation link mailed
+                     to the NEW address is opened. -->
+                <form id="email_form" class="account_form" novalidate>
+                    <h3>Change Gmail</h3>
+                    <p class="account_hint">
+                        A confirmation link will be sent to the new address.
+                        Your gmail only changes after you open that link.
+                    </p>
+
+                    <label for="new_email">New gmail</label>
+                    <input type="email" id="new_email" name="newEmail"
+                           placeholder="example@gmail.com" autocomplete="email" required>
+
+                    <label for="email_password">Current password</label>
+                    <input type="password" id="email_password" name="currentPassword"
+                           placeholder="Your current password" autocomplete="current-password" required>
+
+                    <p id="email_message" class="form_message" role="status"></p>
+                    <button type="submit" class="account_button primary">Send confirmation link</button>
+                </form>
+
+                <!-- --- Change password ------------------------------- -->
+                <form id="password_form" class="account_form" novalidate>
+                    <h3>Change password</h3>
+
+                    <label for="current_password">Current password</label>
+                    <input type="password" id="current_password" name="currentPassword"
+                           placeholder="Your current password" autocomplete="current-password" required>
+
+                    <label for="new_password">New password</label>
+                    <input type="password" id="new_password" name="newPassword"
+                           placeholder="At least 8 characters" autocomplete="new-password" required>
+
+                    <label for="confirm_password">Confirm password</label>
+                    <input type="password" id="confirm_password" name="confirmPassword"
+                           placeholder="Type the new password again" autocomplete="new-password" required>
+
+                    <p id="password_message" class="form_message" role="status"></p>
+                    <button type="submit" class="account_button primary">Update password</button>
+                </form>
+
+                <div class="account_actions">
+                    <button type="button" id="account_logout" class="account_button">Log out</button>
+                </div>
+            </div>
         </section>
     </main>
+
+    <script>
+        // ============================================================
+        //  account.html -- account settings
+        //
+        //  1. Ask /api/me who we are.
+        //      401 -> keep the "log in to see account details" card
+        //             and leave the details block hidden.
+        //      200 -> hide the notice and fetch the real details.
+        //
+        //  The gate here is UX only: /api/user/account returns 401 to
+        //  anyone without a session cookie, so faking the reveal in
+        //  devtools shows an empty page, not someone's data.
+        //
+        //  /api/me and /api/user/account both read the SAME session
+        //  cookie, so they are asked in sequence rather than in
+        //  parallel -- no point fetching details we already know
+        //  will be refused.
+        // ============================================================
+        (function () {
+            const locked = document.getElementById("account_locked");
+            const details = document.getElementById("account_details");
+
+            const emailForm = document.getElementById("email_form");
+            const passwordForm = document.getElementById("password_form");
+            const emailMessage = document.getElementById("email_message");
+            const passwordMessage = document.getElementById("password_message");
+
+            const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+
+            function setMessage(el, text, kind) {
+                el.textContent = text;
+                el.className = "form_message " + (kind || "");
+            }
+
+            function showLoggedOut() {
+                locked.hidden = false;
+                details.hidden = true;
+            }
+
+            async function loadAccount() {
+                const me = await fetch("/api/me", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+
+                if (!me.ok) {
+                    showLoggedOut();
+                    return;
+                }
+
+                const account = await fetch("/api/user/account", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+
+                if (!account.ok) {
+                    showLoggedOut();
+                    return;
+                }
+
+                const data = await account.json();
+
+                document.getElementById("acc_name").textContent = data.name || "\u2014";
+                document.getElementById("acc_student_id").textContent = data.student_id || "\u2014";
+                document.getElementById("acc_gmail").textContent = data.gmail || "\u2014";
+                document.getElementById("acc_role").textContent =
+                    data.access === "admin" ? "Administrator" : "Student";
+                document.getElementById("account_greeting").textContent =
+                    "Signed in as " + (data.name || "your account") + ".";
+
+                if (data.pending_email) {
+                    setMessage(
+                        emailMessage,
+                        "Waiting for confirmation: a link was sent to " +
+                            data.pending_email + ". Open it to finish the change.",
+                        "pending",
+                    );
+                }
+
+                // Details only become visible AFTER the data arrives.
+                locked.hidden = true;
+                details.hidden = false;
+            }
+
+            // --- change gmail ------------------------------------
+            emailForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const button = emailForm.querySelector("button");
+                const newEmail = document.getElementById("new_email").value.trim();
+                const currentPassword = document.getElementById("email_password").value;
+
+                if (!newEmail || !currentPassword) {
+                    setMessage(emailMessage, "Fill in both fields.", "error");
+                    return;
+                }
+
+                button.disabled = true;
+                setMessage(emailMessage, "Sending confirmation link...", "");
+
+                try {
+                    const res = await fetch("/api/user/account", {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ newEmail, currentPassword }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (!res.ok) {
+                        setMessage(
+                            emailMessage,
+                            data.error || "Could not start the email change (HTTP " + res.status + ").",
+                            "error",
+                        );
+                        return;
+                    }
+
+                    setMessage(emailMessage, data.message || "Confirmation email sent.", "success");
+                    emailForm.reset();
+                } catch (err) {
+                    console.error(err);
+                    setMessage(emailMessage, "Could not reach the server.", "error");
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            // --- change password --------------------------------
+            passwordForm.addEventListener("submit", async (e) => {
+                e.preventDefault();
+
+                const button = passwordForm.querySelector("button");
+                const currentPassword = document.getElementById("current_password").value;
+                const newPassword = document.getElementById("new_password").value;
+                const confirmPassword = document.getElementById("confirm_password").value;
+
+                // Fast feedback; the server checks this again.
+                if (newPassword !== confirmPassword) {
+                    setMessage(passwordMessage, "The new passwords do not match.", "error");
+                    return;
+                }
+                if (!PASSWORD_RULE.test(newPassword)) {
+                    setMessage(
+                        passwordMessage,
+                        "Password must be at least 8 characters, include one uppercase letter, " +
+                            "one number, and one special character.",
+                        "error",
+                    );
+                    return;
+                }
+
+                button.disabled = true;
+                setMessage(passwordMessage, "Updating...", "");
+
+                try {
+                    const res = await fetch("/api/user/account", {
+                        method: "PUT",
+                        credentials: "same-origin",
+                        headers: { "content-type": "application/json" },
+                        body: JSON.stringify({ currentPassword, newPassword, confirmPassword }),
+                    });
+                    const data = await res.json().catch(() => ({}));
+
+                    if (!res.ok) {
+                        setMessage(
+                            passwordMessage,
+                            data.error || "Could not change the password (HTTP " + res.status + ").",
+                            "error",
+                        );
+                        return;
+                    }
+
+                    setMessage(passwordMessage, data.message || "Password updated.", "success");
+                    passwordForm.reset();
+                } catch (err) {
+                    console.error(err);
+                    setMessage(passwordMessage, "Could not reach the server.", "error");
+                } finally {
+                    button.disabled = false;
+                }
+            });
+
+            // --- log out ---------------------------------------
+            document.getElementById("account_logout").addEventListener("click", async () => {
+                try {
+                    await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "same-origin",
+                    });
+                } catch (err) {
+                    console.error("logout failed:", err);
+                }
+                window.location.reload();
+            });
+
+            loadAccount().catch((err) => {
+                console.error("account load failed:", err);
+                showLoggedOut();
+            });
+        })();
+    </script>
 </body>
 </html>

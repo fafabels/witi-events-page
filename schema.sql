@@ -83,6 +83,30 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions (user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions (expires_at);
 
 -- ============================================================
+--  Pending email changes — confirms a new Gmail address.
+--
+--  A change is only applied when the link that was mailed to the
+--  NEW address is opened. The row stores only the SHA-256 of the
+--  link's random token, exactly like `sessions`.
+--
+--  Created by the account endpoint if it does not exist yet, so this
+--  block is safe to run against an already-populated database.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS email_change_requests (
+    token_hash      TEXT    PRIMARY KEY,          -- SHA-256(token) of the mailed link
+    user_id         INTEGER NOT NULL,             -- whose email is changing
+    new_email       TEXT    NOT NULL,             -- address waiting to be confirmed
+    created_at      INTEGER NOT NULL,             -- epoch seconds
+    expires_at      INTEGER NOT NULL,             -- epoch seconds
+
+    FOREIGN KEY (user_id) REFERENCES users (user_id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_email_change_user_id
+    ON email_change_requests (user_id);
+
+-- ============================================================
 --  Bulletin content — what the bulletin page displays.
 --
 --  announcements  -> #a_con   (short message + click/hover detail)
@@ -118,3 +142,18 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_events_kind_date ON events (kind, event_date);
+
+-- ============================================================
+--  Staying logged in on the local dev server
+--
+--  wrangler.toml files are NOT watched by `wrangler pages dev`, so a
+--  value added there is not picked up without a restart. Passing it
+--  on the command line always works:
+--
+--    npx wrangler pages dev --port 8788 \
+--        --binding SESSION_COOKIE_INSECURE=1
+--
+--  With that set, the session cookie drops the `Secure` flag and is
+--  stored over plain http:// (including http://192.168.x.x on your
+--  phone). Never set it in production.
+-- ============================================================

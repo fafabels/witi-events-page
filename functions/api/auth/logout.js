@@ -9,7 +9,11 @@
 //  for anyone who had already copied it.
 // ============================================================
 
-import { json, DB_BINDING } from "../../_utils/auth.js";
+import {
+  json,
+  DB_BINDING,
+  buildSessionCookie,
+} from "../../_utils/auth.js";
 import { hashSessionToken } from "../../_utils/password.js";
 
 function readSessionCookie(request) {
@@ -36,8 +40,7 @@ export async function onRequestPost({ request, env }) {
     status: 200,
     headers: {
       "content-type": "application/json",
-      "Set-Cookie":
-        "session=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0",
+      "Set-Cookie": buildSessionCookie("", 0, request.url, env),
     },
   });
 }

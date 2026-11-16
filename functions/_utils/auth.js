@@ -112,9 +112,13 @@ export async function getCurrentUser(request, env) {
   const now = Math.floor(Date.now() / 1000);
   const tokenHash = await hashSessionToken(token);
 
+  // The account settings page also needs the student id and the
+  // gmail, so they travel with the identity. This object is only ever
+  // used on the SERVER -- /api/me decides which of these fields reach
+  // the browser.
   const user = await db
     .prepare(
-      `SELECT u.user_id, u.name, u.access
+      `SELECT u.user_id, u.name, u.student_id, u.gmail, u.access
          FROM sessions s
          JOIN users u ON u.user_id = s.user_id
         WHERE s.token_hash = ?
@@ -125,6 +129,60 @@ export async function getCurrentUser(request, env) {
     .first();
 
   return user ?? null;
+}
+
+// ============================================================
+//  Session cookie
+//  Shared by login, signup, logout and the account endpoints so the
+//  attributes can never drift apart (a cookie written without
+//  `Path=/` is invisible to half the site).
+//
+//  `Secure` cookies are only stored by the browser over HTTPS, so on a
+//  local http:// dev server the browser would silently drop the
+//  session and every later request would look logged out. We keep
+//  `Secure` in production (any https:// origin) and relax it only for
+//  http:// localhost / 127.0.0.1 -- or for any origin when the dev
+//  server is started with --var SESSION_COOKIE_INSECURE:1 (see
+//  schema.sql).
+// ============================================================
+function isLocalHttp(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "http:") return false;
+    return (
+      u.hostname === "localhost" ||
+      u.hostname === "127.0.0.1" ||
+      u.hostname === "[::1]"
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Build a `Set-Cookie` value for the session token.
+ * @param {string} token
+ * @param {number} maxAge seconds; 0 clears the cookie (logout)
+ * @param {string} url the request URL
+ * @param {object} [env] the Pages env (checks SESSION_COOKIE_INSECURE)
+ */
+export function buildSessionCookie(token, maxAge, url, env) {
+  // HttpOnly  -> JS cannot read it (blocks XSS token theft)
+  // Secure    -> HTTPS only (relaxed for local http testing)
+  // SameSite  -> Lax stops the cookie riding along on cross-site POSTs
+  // Path      -> sent to the whole site
+  const parts = [
+    `session=${token}`,
+    "HttpOnly",
+    "SameSite=Lax",
+    "Path=/",
+    `Max-Age=${maxAge}`,
+  ];
+
+  const insecureDev = String(env?.SESSION_COOKIE_INSECURE ?? "") === "1";
+  if (!insecureDev && !isLocalHttp(url)) parts.splice(2, 0, "Secure");
+
+  return parts.join("; ");
 }
 
 // ============================================================

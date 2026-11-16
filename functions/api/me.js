@@ -22,9 +22,12 @@ export async function onRequestGet({ request, env }) {
   if (error) return error;
 
   // Return only what the UI needs. Never send the password hash.
+  // `gmail` is included because the settings section shows it as the
+  // current address -- it never leaves the user's own session.
   return json({
     user_id: user.user_id,
     name: user.name,
+    gmail: user.gmail,
     access: user.access,
   });
 }

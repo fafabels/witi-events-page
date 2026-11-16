@@ -217,3 +217,159 @@ footer a {
     padding: 20px 25px;
     box-shadow: 10px 10px rgba(0, 0, 0, 0.09);
 }
+/* ============================================================
+   Account settings (main.html #account)
+
+   Both blocks share .account_card. The notice is in the HTML first
+   and the details carry the `hidden` attribute until the session
+   check succeeds, so nothing flashes before the answer arrives.
+   ============================================================ */
+
+.account_section {
+    width: 100%;
+    max-width: 900px;
+    margin: 40px auto 80px;
+    padding: 0 20px;
+    box-sizing: border-box;
+}
+
+.account_card {
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 20px;
+    padding: 28px 32px;
+    box-shadow: 10px 10px rgba(0, 0, 0, 0.09);
+}
+
+.account_card[hidden] {
+    display: none;
+}
+
+.account_card h2 {
+    color: rgb(47, 47, 215);
+    margin-bottom: 10px;
+}
+
+.account_note {
+    margin: 0 0 16px;
+    color: #333;
+}
+
+.account_info {
+    display: grid;
+    grid-template-columns: max-content minmax(0, 1fr);
+    gap: 6px 18px;
+    margin: 0 0 24px;
+}
+
+.account_info dt {
+    font-weight: 700;
+    color: #444;
+}
+
+.account_info dd {
+    margin: 0;
+    color: #111;
+    word-break: break-word;
+}
+
+.account_actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.account_button {
+    display: inline-block;
+    padding: 10px 20px;
+    border: 1px solid rgb(47, 47, 215);
+    border-radius: 999px;
+    background: transparent;
+    color: rgb(47, 47, 215);
+    font: inherit;
+    font-size: 15px;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.account_button:hover {
+    background: rgba(47, 47, 215, 0.08);
+}
+
+.account_button.primary {
+    background: rgb(47, 47, 215);
+    color: #fff;
+}
+
+.account_button.primary:hover {
+    background: rgb(35, 35, 175);
+}
+
+.account_button:disabled {
+    opacity: 0.6;
+    cursor: progress;
+}
+
+.account_form {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+    padding-top: 20px;
+    margin-top: 24px;
+}
+
+.account_form h3 {
+    color: rgb(47, 47, 215);
+    margin-bottom: 4px;
+}
+
+.account_form label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #444;
+    margin-top: 8px;
+}
+
+.account_form input {
+    padding: 10px 12px;
+    border: 1px solid #bbb;
+    border-radius: 10px;
+    font: inherit;
+    font-size: 15px;
+    background: #fff;
+}
+
+.account_form input:focus {
+    outline: 2px solid rgb(47, 47, 215);
+    outline-offset: 1px;
+}
+
+.account_form .account_button {
+    align-self: flex-start;
+    margin-top: 12px;
+}
+
+.account_hint {
+    font-size: 13px;
+    color: #555;
+    margin: 0 0 4px;
+}
+
+.form_message {
+    margin: 8px 0 0;
+    font-size: 14px;
+    min-height: 1em;
+}
+
+.form_message.error {
+    color: rgb(183, 24, 24);
+}
+
+.form_message.success {
+    color: rgb(19, 122, 55);
+}
+
+.form_message.pending {
+    color: rgb(150, 100, 0);
+}
