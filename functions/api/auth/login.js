@@ -130,7 +130,7 @@ export async function onRequestPost({ request, env }) {
       redirect:
         access === ROLES.ADMIN
           ? "/static/admin/admin.html"
-          : "/static/user/main_page.html",
+          : "/static/user/main.html",
     }),
     {
       status: 200,

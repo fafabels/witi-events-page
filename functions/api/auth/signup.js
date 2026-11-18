@@ -215,7 +215,7 @@ export async function onRequestPost({ request, env }) {
       ok: true,
       access: ROLES.USER,
       name,
-      redirect: "/static/user/main_page.html",
+      redirect: "/static/user/main.html",
     }),
     {
       status: 201,
