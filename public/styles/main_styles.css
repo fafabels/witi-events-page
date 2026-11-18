@@ -140,8 +140,8 @@ footer a {
 #welcome {
     text-align: left;
     font-size: 50px;
-    width: 50%;
-    margin: 20px;
+    width: 55%;
+    margin: 10px;
     color: white;
 }
 
@@ -385,4 +385,26 @@ footer a {
 
 .account_form input.readonly_field:focus {
     outline: none;
+}
+
+.generic_link {
+    color: blue;
+}
+
+#promotional-slider {
+    opacity: 0.9;
+    color: rgb(49, 49, 53);
+    width: 55%;
+}
+
+#promotional-slider h1 {
+    font-size: 40px;
+}
+
+#promotional-slider p {
+    font-size: 20px;
+}
+
+.sliders {
+    margin: 40px 0 40px 0;
 }
