@@ -11,7 +11,7 @@
         <h1 class="main-title">WITI Admin</h1>
         <nav id="navigation">
             <ul>
-                <a class="nav_button" href="../user/main_page.html">Home</a>
+                <a class="nav_button" href="../user/main.html">Home</a>
                 <button class="nav_button" id="logout_button" type="button">Log out</button>
             </ul>
         </nav>
@@ -186,7 +186,7 @@
                 }
                 const me = await res.json();
                 if (me.access !== "admin") {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return false;
                 }
                 return true;
@@ -256,7 +256,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
@@ -296,7 +296,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
@@ -340,7 +340,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
@@ -534,7 +534,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
@@ -586,7 +586,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
@@ -642,7 +642,7 @@
                 });
 
                 if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main_page.html");
+                    window.location.replace("/static/user/main.html");
                     return;
                 }
 
