@@ -10,7 +10,7 @@ body::before {
     width: 100vw;      /* full viewport width */
     height: 100dvh;    /* dynamic viewport height */
     /*background: url("../assets/bg_image.jpg")  center/cover no-repeat;*/
-    background: rgb(37, 77, 165);
+    background: rgb(244, 247, 255);
     filter: blur(4px);
     z-index: -1;         /* behind everything else */
 }
@@ -21,7 +21,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 #school_announcement {
-    background: rgb(223, 33, 33);
+    background: rgb(113, 111, 165);
     
     border-radius: 20px;
     place-self: center;
@@ -190,7 +190,7 @@ header::after {
     top: 0; left: 0;
     width: 100%;      /* full viewport width */
     height: 14%;    /* dynamic viewport height */
-    background: rgb(255, 1, 1);
+    background: rgb(106, 97, 183);
     filter: blur(2px);
     opacity: 0.5;
     z-index: -1;         /* behind everything else */
