@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WITI Bulletin Board</title>
     <noscript>
-        <meta http-equiv="refresh" content="0; url=./static/signup/signup.html">
+        <meta http-equiv="refresh" content="0; url=./static/user/bulletin.html">
     </noscript>
 </head>
 <body>
@@ -27,15 +27,14 @@
         //  exactly why the check moved into functions/api/me.js.
         // ============================================================
 
-        // Where each role lands. Keep these in sync with the real paths.
-        //
-        // "none" = not logged in. Per request, new visitors land on
-        // SIGNUP first; the signup page links across to login for
-        // people who already have an account.
+        // Where each role lands. `none` is now decided by the server:
+        // /api/me replies 200 with `entry` in open mode (no login flow),
+        // so a visitor goes straight to the board; in strict mode it is
+        // a 401 and they are sent to the log-in page.
         const ROUTES = {
             admin: "/static/admin/admin.html",
             user:  "/static/user/main.html",
-            none:  "/static/signup/signup.html",
+            none:  "/static/login/login.html",
         };
 
         const status = document.getElementById("status");
@@ -64,8 +63,10 @@
                 return;
             }
 
-            // 401 = no valid session cookie. Everyone who is not logged
-            // in ends up here, so that is not an error condition.
+            // 401 = no valid session cookie AND the site is in strict
+            // mode. In open mode the server answers 200 instead (see
+            // below), so nobody is parked on a login page that the
+            // admin has switched off.
             if (res.status === 401) {
                 go(ROUTES.none);
                 return;
@@ -78,6 +79,13 @@
             }
 
             const me = await res.json();
+
+            // Open mode: there is no session to consult, so the board
+            // itself is the destination (`entry` comes from the server).
+            if (me.access === null) {
+                go(me.entry || ROUTES.user);
+                return;
+            }
 
             // Server is the authority on `me.access`. We only choose a
             // destination -- we never use this value to unlock anything.

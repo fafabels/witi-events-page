@@ -157,3 +157,29 @@ CREATE INDEX IF NOT EXISTS idx_events_kind_date ON events (kind, event_date);
 --  stored over plain http:// (including http://192.168.x.x on your
 --  phone). Never set it in production.
 -- ============================================================
+
+-- ============================================================
+--  Site settings — the admin page's security-mode switch.
+--
+--  One row, id = 1. strict_mode:
+--      1 -> only students on student_master_list may sign up, and
+--           the user pages require a logged-in session (default).
+--      0 -> open mode: no login/signup/account flow; the bulletin
+--           board is readable by anyone.
+--
+--  Read/written only through functions/_utils/settings.js, which
+--  treats a missing row or table as strict_mode = 1 (fail closed).
+--
+--  No DROP here on purpose: running this file must not reset a
+--  switch the admin already flipped.
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS site_settings (
+    id           INTEGER PRIMARY KEY CHECK (id = 1),
+    strict_mode  INTEGER NOT NULL DEFAULT 1 CHECK (strict_mode IN (0, 1)),
+    updated_at   INTEGER NOT NULL              -- epoch seconds
+);
+
+-- Seed the default row only if it is missing.
+INSERT OR IGNORE INTO site_settings (id, strict_mode, updated_at)
+VALUES (1, 1, CAST(strftime('%s', 'now') AS INTEGER));

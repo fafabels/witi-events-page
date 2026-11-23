@@ -11,6 +11,8 @@
 //
 //  Rules enforced here (the browser-side checks in signup.html are
 //  a convenience, not a security boundary -- anyone can skip them):
+//    - the admin's security switch must be ON (strict mode); while it
+//      is off, the site is open and signup is refused entirely
 //    - studentId must be in student_master_list (you're a real student)
 //    - studentId and email must not already be registered
 //    - password must meet the strength rule
@@ -23,6 +25,9 @@ import {
   ROLES,
   buildSessionCookie,
 } from "../../_utils/auth.js";
+// The admin page's security switch. In open mode there is no roster
+// check and signup hands out a session to anyone.
+import { isStrictMode, entryPage } from "../../_utils/settings.js";
 import {
   hashPassword,
   generateSessionToken,
@@ -49,6 +54,9 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "Server misconfigured." }, 500);
   }
 
+  // The admin switch decides whether signup is available at all.
+  const strict = await isStrictMode(env);
+
   // 1. Parse the body.
   let body;
   try {
@@ -62,6 +70,17 @@ export async function onRequestPost({ request, env }) {
   const email = normalize(body.email ?? body.gmail).toLowerCase();
   const password = typeof body.password === "string" ? body.password : "";
 
+  // Open mode -- the admin took the login/signup flow off the site, but
+  // that only hides the FORMS. Anyone can still POST here, so the mode
+  // is enforced on the server too: refuse rather than quietly create
+  // accounts nobody can then sign in to.
+  if (!strict) {
+    return json(
+      { error: "Signing up is disabled while the site is in open mode." },
+      403,
+    );
+  }
+
   // 2. Validate the name.
   if (name.length < NAME_MIN || name.length > NAME_MAX) {
     return json(
@@ -71,7 +90,8 @@ export async function onRequestPost({ request, env }) {
   }
 
   // 3. Validate the student id against the official roster. This is
-  //    the check that stops anyone from inventing an ID.
+  //    the check that stops anyone from inventing an ID. (Open mode
+  //    never reaches here -- it is refused above.)
   if (!studentId) {
     return json({ error: "Student ID is required." }, 422);
   }

@@ -87,8 +87,9 @@ ul {
 }
 
 footer {
-    background: rgb(183, 24, 24);
-    padding-top: 20px;
+    background: rgb(54, 56, 95);
+    padding-top: 10px;
+    padding-bottom: 10px;
 }
 
 footer p {
@@ -96,12 +97,23 @@ footer p {
     text-align: center;
 }
 
-footer p {
+footer p, h4 {
+    color: rgb(226, 226, 226);
+}
+
+footer a{
     color: white;
 }
 
-footer a {
-    color: white;
+#footer-parent {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.footer-child {
+    margin: 10px 40px 10px 40px;
 }
 
 .footer-redirections {

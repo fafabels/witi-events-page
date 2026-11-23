@@ -25,6 +25,9 @@ import {
   ROLES,
   buildSessionCookie,
 } from "../../_utils/auth.js";
+// Open mode keeps a copy of this form on the site purely so the
+// single admin can still get in -- see the check in onRequestPost.
+import { isStrictMode, entryPage } from "../../_utils/settings.js";
 import {
   verifyPassword,
   generateSessionToken,
@@ -57,6 +60,8 @@ export async function onRequestPost({ request, env }) {
   if (!db) {
     return json({ error: "Server misconfigured." }, 500);
   }
+
+  const strict = await isStrictMode(env);
 
   // 1. Parse the body.
   let body;
@@ -103,7 +108,19 @@ export async function onRequestPost({ request, env }) {
     return json({ error: GENERIC_ERROR }, 401);
   }
 
-  // 5. Issue a session. Store only the HASH of the token.
+  // 5. In open mode the student flow is not part of the site, but the
+  //    admin still needs a way in to flip the switch back and to post
+  //    content -- so admin accounts may log in, everyone else may not.
+  //    (The check runs AFTER the password so a wrong password still
+  //    gives the same generic answer.)
+  if (!strict && user.access !== ROLES.ADMIN) {
+    return json(
+      { error: "Student logins are disabled while the site is in open mode." },
+      403,
+    );
+  }
+
+  // 6. Issue a session. Store only the HASH of the token.
   const token = generateSessionToken();
   const tokenHash = await hashSessionToken(token);
   const now = Math.floor(Date.now() / 1000);
@@ -116,7 +133,7 @@ export async function onRequestPost({ request, env }) {
     .bind(tokenHash, user.user_id, now, now + SESSION_TTL_SECONDS)
     .run();
 
-  // 6. Opportunistic cleanup of this user's stale sessions. Cheap,
+  // 7. Opportunistic cleanup of this user's stale sessions. Cheap,
   //    and keeps the table from growing forever.
   await db.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(now).run();
 
@@ -130,7 +147,7 @@ export async function onRequestPost({ request, env }) {
       redirect:
         access === ROLES.ADMIN
           ? "/static/admin/admin.html"
-          : "/static/user/main.html",
+          : entryPage(strict),
     }),
     {
       status: 200,

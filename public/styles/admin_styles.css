@@ -201,3 +201,79 @@ footer p {
     text-align: center;
     color: white;
 }
+
+/* --- Security switch (strict / open mode) -------------------- */
+.switch_hint {
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0.8;
+    margin: 0 0 12px;
+}
+
+.switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    width: auto;
+    user-select: none;
+}
+
+/* The real checkbox stays in the DOM (keyboard + screen readers) but
+   is visually replaced by the track below. */
+.switch input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+}
+
+.switch_track {
+    position: relative;
+    display: inline-block;
+    width: 52px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.28);
+    transition: background 0.15s ease;
+    flex: none;
+}
+
+.switch_knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.switch input:checked + .switch_track {
+    background: rgb(47, 47, 215);
+}
+
+.switch input:checked + .switch_track .switch_knob {
+    transform: translateX(24px);
+}
+
+.switch input:focus-visible + .switch_track {
+    outline: 2px solid rgb(47, 47, 215);
+    outline-offset: 2px;
+}
+
+.switch input:disabled + .switch_track {
+    opacity: 0.5;
+}
+
+.switch_label {
+    font-size: 15px;
+}
+
+/* Status line under the switch reuses #message's spacing. */
+#strict_status {
+    min-height: 20px;
+    margin: 12px 0 0;
+}

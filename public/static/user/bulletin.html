@@ -19,10 +19,10 @@
             <h1 class="main-title">WITI Bulletin Board</h1>
             <nav id="navigation">
                 <ul>
-                    <a class="nav_button" href="./main.html">Home</a>
-                    <a class="nav_button" href="./bulletin.html">Bulletin</a>
-                    <a class="nav_button" href="./account.html">Account</a>
-                    <a class="nav_button" href="./settings.html">Settings</a>
+                    <a class="nav_button" href="/static/user/main.html">Home</a>
+                    <a class="nav_button" href="/static/user/bulletin.html">Bulletin</a>
+                    <a class="nav_button" href="/static/user/account.html" id="account_link" hidden>Account</a>
+                    <a class="nav_button" href="/static/user/settings.html" id="settings_link" hidden>Settings</a>
                 </ul>
             </nav>
         </header>
@@ -253,26 +253,36 @@
         
         
             // ============================================================
-            //  main.html -- session gate (UX only).
+            //  bulletin.html -- session gate (UX only).
             //
-            //  Ask the server who we are. Not logged in -> login page.
-            //  This is a convenience, NOT a security boundary: the
-            //  browser is untrusted and someone can edit this script.
-            //  Real enforcement is requireUser/requireAdmin on the
-            //  endpoints that return actual data.
+            //  /api/me says whether a session exists AND which mode the
+            //  admin switch is on. Strict mode: no session -> log in.
+            //  Open mode: nobody logs in, so just stay on the board.
+            //  Enforcement is /api/bulletin + requireAdmin on its writes.
             // ============================================================
             (async () => {
+                const accountLink = document.getElementById("account_link");
+                const settingsLink = document.getElementById("settings_link");
+
                 try {
                     const res = await fetch("/api/me", {
                         credentials: "same-origin",
                         headers: { Accept: "application/json" },
                     });
-                    if (!res.ok) {
+
+                    if (res.status === 401) {
                         window.location.replace("/static/login/login.html");
+                        return;
+                    }
+                    if (!res.ok) return; // keep the board usable
+
+                    const me = await res.json();
+                    if (me.strict) {
+                        accountLink.hidden = false;
+                        settingsLink.hidden = false;
                     }
                 } catch (err) {
                     console.error("session check failed:", err);
-                    window.location.replace("/static/login/login.html");
                 }
             })();
         </script>

@@ -15,10 +15,10 @@
         <h1 class="main-title">WITI Bulletin Board</h1>
         <nav id="navigation">
             <ul>
-                <a class="nav_button" href="./main.html">Home</a>
-                <a class="nav_button" href="./bulletin.html">Bulletin</a>
-                <a class="nav_button" href="./account.html">Account</a>
-                <a class="nav_button" href="./settings.html">Settings</a>
+                <a class="nav_button" href="/static/user/main.html">Home</a>
+                <a class="nav_button" href="/static/user/bulletin.html">Bulletin</a>
+                <a class="nav_button" href="/static/user/account.html">Account</a>
+                <a class="nav_button" href="/static/user/settings.html">Settings</a>
             </ul>
         </nav>
     </header>
@@ -130,6 +130,26 @@
                 details.hidden = true;
             }
 
+            // Open mode has no login/signup flow, so the "log in first"
+            // card would offer links to pages the admin switched off.
+            // Send those visitors to the board instead. Strict mode (or
+            // any failure to ask) leaves the card as it is.
+            async function redirectIfOpen() {
+                try {
+                    const res = await fetch("/api/me", {
+                        credentials: "same-origin",
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) return;
+                    const me = await res.json();
+                    if (me.strict === false) {
+                        window.location.replace("/static/user/bulletin.html");
+                    }
+                } catch (err) {
+                    console.error("mode check failed:", err);
+                }
+            }
+
             async function loadAccount() {
                 // /api/user/account is the authority: it re-reads the row
                 // from `users` using the session, so every field it sends
@@ -142,7 +162,11 @@
                 });
 
                 if (account.status === 401) {
+                    // The card is a fallback for "no session". Whether
+                    // that means "go log in" or "the site is open, there
+                    // is no account page" depends on the admin switch.
                     showLoggedOut();
+                    await redirectIfOpen();
                     return;
                 }
 

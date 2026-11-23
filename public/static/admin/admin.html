@@ -21,6 +21,26 @@
         <section class="gap"><p>&nbsp;</p></section>
 
         <section class="card">
+            <h2>Student-only access</h2>
+            <p class="switch_hint">
+                <strong>On (strict):</strong> only students on the master list
+                below can sign up, and the Home / Bulletin / Account pages
+                require a logged-in session.<br>
+                <strong>Off (open):</strong> the login, signup and account pages
+                are taken off the site and the bulletin board opens to anyone.
+                Writes still require an admin login.
+            </p>
+
+            <label class="switch" for="strict_toggle">
+                <input type="checkbox" id="strict_toggle" role="switch" disabled>
+                <span class="switch_track" aria-hidden="true"><span class="switch_knob"></span></span>
+                <span id="strict_label" class="switch_label">Loading&hellip;</span>
+            </label>
+
+            <p id="strict_status" class="switch_hint"></p>
+        </section>
+
+        <section class="card">
             <h2>Add a student to the master list</h2>
             <form id="add_student_form" novalidate>
                 <label for="student_id">Student ID:</label>
@@ -682,10 +702,114 @@
             window.location.replace("/static/login/login.html");
         });
 
-        // --- 5. Boot ------------------------------------------------
+        // --- 6. Security switch -------------------------------------
+        //  Talks to /api/admin/settings:
+        //      GET -> { strict, studentsOnRoster }
+        //      PUT -> body { strict: boolean }
+        //  The server is the one that enforces the mode (signup.js,
+        //  login.js, /api/me); this checkbox only reflects and sets it.
+        const strictToggle = document.getElementById("strict_toggle");
+        const strictLabel = document.getElementById("strict_label");
+        const strictStatus = document.getElementById("strict_status");
+
+        function paintStrict(strict) {
+            strictToggle.checked = strict;
+            strictLabel.textContent = strict
+                ? "Strict \u2014 students only"
+                : "Open \u2014 anyone can view";
+        }
+
+        async function loadSettings() {
+            strictStatus.textContent = "Loading\u2026";
+            try {
+                const res = await fetch("/api/admin/settings", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    strictStatus.textContent =
+                        data.error || "Could not load the setting.";
+                    return;
+                }
+
+                paintStrict(data.strict);
+                strictStatus.textContent =
+                    data.studentsOnRoster === 0 && data.strict
+                        ? "The master list is empty \u2014 nobody can sign up until you add students below."
+                        : "";
+                strictToggle.disabled = false;
+            } catch (err) {
+                console.error(err);
+                strictStatus.textContent = "Could not reach the server.";
+            }
+        }
+
+        strictToggle.addEventListener("change", async () => {
+            const wanted = strictToggle.checked;
+
+            // Going open takes the student flow off the site. Make sure
+            // that is on purpose rather than a stray click.
+            if (!wanted) {
+                const ok = window.confirm(
+                    "Turn OFF student-only access?\n\n" +
+                        "The login, signup and account pages will stop being used " +
+                        "and anyone will be able to read the bulletin board.",
+                );
+                if (!ok) {
+                    strictToggle.checked = true;
+                    return;
+                }
+            }
+
+            strictToggle.disabled = true;
+            strictStatus.textContent = "Saving\u2026";
+
+            try {
+                const res = await fetch("/api/admin/settings", {
+                    method: "PUT",
+                    credentials: "same-origin",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ strict: wanted }),
+                });
+
+                if (res.status === 401 || res.status === 403) {
+                    window.location.replace("/static/user/main.html");
+                    return;
+                }
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    strictToggle.checked = !wanted;
+                    strictStatus.textContent =
+                        data.error || "Could not save the setting.";
+                    return;
+                }
+
+                paintStrict(data.strict);
+                strictStatus.textContent = data.strict
+                    ? "Saved. Students only."
+                    : "Saved. Open to everyone.";
+            } catch (err) {
+                console.error(err);
+                strictToggle.checked = !wanted;
+                strictStatus.textContent = "Could not reach the server.";
+            } finally {
+                strictToggle.disabled = false;
+            }
+        });
+
+        // --- 7. Boot ------------------------------------------------
         //  Guard first; only load the roster if we really are an admin.
         (async () => {
             if (await guardAdminPage()) {
+                loadSettings();
                 loadRoster();
                 loadContent();
             }
