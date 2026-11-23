@@ -66,38 +66,6 @@
                     <dd id="acc_role">&mdash;</dd>
                 </dl>
 
-                <!-- --- Change gmail ----------------------------------
-                     Nothing changes until the confirmation link mailed
-                     to the NEW address is opened. -->
-                <form id="email_form" class="account_form" novalidate>
-                    <h3>Change Gmail</h3>
-                    <p class="account_hint">
-                        A confirmation link will be sent to the new address.
-                        Your gmail only changes after you open that link.
-                    </p>
-
-                    <!-- Read-only context: whose account is being changed.
-                         Filled by the script once the details load. -->
-                    <!--<label for="email_student_id">Student ID</label>
-                    <input type="text" id="email_student_id" class="readonly_field"
-                           value="\u2014" readonly tabindex="-1" aria-readonly="true"> commented out on purpose-->
-
-                    <label for="new_email">New gmail</label>
-                    <!-- autocomplete="off" (not "email") -- "email" is the hint
-                         that makes Chrome offer its saved login for this site,
-                         whose username is the STUDENT ID from the login form. -->
-                    <input type="email" id="new_email" name="newEmail"
-                           placeholder="example@gmail.com" autocomplete="off"
-                           spellcheck="false" required>
-
-                    <label for="email_password">Current password</label>
-                    <input type="password" id="email_password" name="currentPassword"
-                           placeholder="Your current password" autocomplete="current-password" required>
-
-                    <p id="email_message" class="form_message" role="status"></p>
-                    <button type="submit" class="account_button primary">Send confirmation link</button>
-                </form>
-
                 <!-- --- Change password ------------------------------- -->
                 <form id="password_form" class="account_form" novalidate>
                     <h3>Change password</h3>
@@ -147,9 +115,7 @@
             const locked = document.getElementById("account_locked");
             const details = document.getElementById("account_details");
 
-            const emailForm = document.getElementById("email_form");
             const passwordForm = document.getElementById("password_form");
-            const emailMessage = document.getElementById("email_message");
             const passwordMessage = document.getElementById("password_message");
 
             const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -204,78 +170,10 @@
                 document.getElementById("account_greeting").textContent =
                     "Signed in as " + (data.name || "your account") + ".";
 
-                if (data.pending_email) {
-                    setMessage(
-                        emailMessage,
-                        "Waiting for confirmation: a link was sent to " +
-                            data.pending_email + ". Open it to finish the change.",
-                        "pending",
-                    );
-                }
-
                 // Details only become visible AFTER the data arrives.
-                // The address being replaced is already shown in the
-                // account_info list above, so the input is left empty
-                // for the new value. (`gmail` is null when the server
-                // could not make sense of the stored value.)
-                const newEmailInput = document.getElementById("new_email");
-
                 locked.hidden = true;
                 details.hidden = false;
             }
-
-            // --- change gmail ------------------------------------
-            emailForm.addEventListener("submit", async (e) => {
-                e.preventDefault();
-
-                const button = emailForm.querySelector("button");
-                const newEmail = document.getElementById("new_email").value.trim();
-                const currentPassword = document.getElementById("email_password").value;
-
-                if (!newEmail || !currentPassword) {
-                    setMessage(emailMessage, "Fill in both fields.", "error");
-                    return;
-                }
-
-                // signup.html only accepts gmail addresses; the browser
-                // here does not, so reject a non-gmail first and say so.
-                if (!/@gmail\.com$/i.test(newEmail)) {
-                    setMessage(emailMessage, "Use a gmail address ending in @gmail.com.", "error");
-                    return;
-                }
-
-                button.disabled = true;
-                setMessage(emailMessage, "Sending confirmation link...", "");
-
-                try {
-                    const res = await fetch("/api/user/account", {
-                        method: "POST",
-                        credentials: "same-origin",
-                        headers: { "content-type": "application/json" },
-                        body: JSON.stringify({ newEmail, currentPassword }),
-                    });
-                    const data = await res.json().catch(() => ({}));
-
-                    if (!res.ok) {
-                        setMessage(
-                            emailMessage,
-                            data.error || "Could not start the email change (HTTP " + res.status + ").",
-                            "error",
-                        );
-                        return;
-                    }
-
-                    setMessage(emailMessage, data.message || "Confirmation email sent.", "success");
-                    emailForm.reset();
-                    newEmailInput.placeholder =
-                        data.pending_email || "example@gmail.com";
-                } catch (err) {
-                    console.error(err);
-                    setMessage(emailMessage, "Could not reach the server.", "error");
-                } finally {
-                    button.disabled = false;
-                }
-            });
 
             // --- change password --------------------------------
             passwordForm.addEventListener("submit", async (e) => {
