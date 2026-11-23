@@ -85,10 +85,6 @@
                     <label for="new_email">New gmail</label>
                     <input type="email" id="new_email" name="newEmail"
                            placeholder="example@gmail.com" autocomplete="email" required>
-                    <dl class="account_info">
-                        <dt>Current gmail</dt>
-                        <dd id="email_current">&mdash;</dd>
-                    </dl>
 
                     <label for="email_password">Current password</label>
                     <input type="password" id="email_password" name="currentPassword"
@@ -214,13 +210,11 @@
                 }
 
                 // Details only become visible AFTER the data arrives.
-                // The current address is shown next to the form so the
-                // "New gmail" box starts empty: it is the field being
-                // replaced, and prefilling it with the value the server
-                // rejects ("That is already your email address.") would
-                // make the form fail on the first submit.
-                document.getElementById("email_current").textContent =
-                    data.gmail || "(no email on file)";
+                // The address being replaced is already shown in the
+                // account_info list above, so the input is left empty
+                // for the new value. (`gmail` is null when the server
+                // could not make sense of the stored value.)
+                const newEmailInput = document.getElementById("new_email");
 
                 locked.hidden = true;
                 details.hidden = false;
@@ -236,6 +230,13 @@
 
                 if (!newEmail || !currentPassword) {
                     setMessage(emailMessage, "Fill in both fields.", "error");
+                    return;
+                }
+
+                // signup.html only accepts gmail addresses; the browser
+                // here does not, so reject a non-gmail first and say so.
+                if (!/@gmail\.com$/i.test(newEmail)) {
+                    setMessage(emailMessage, "Use a gmail address ending in @gmail.com.", "error");
                     return;
                 }
 
@@ -262,6 +263,8 @@
 
                     setMessage(emailMessage, data.message || "Confirmation email sent.", "success");
                     emailForm.reset();
+                    newEmailInput.placeholder =
+                        data.pending_email || "example@gmail.com";
                 } catch (err) {
                     console.error(err);
                     setMessage(emailMessage, "Could not reach the server.", "error");
