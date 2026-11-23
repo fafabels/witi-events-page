@@ -217,8 +217,14 @@
                     currentEmail || "example@gmail.com";
 
                 // The Change Gmail form shows which student's account it is.
-                document.getElementById("email_student_id").value =
-                    data.student_id || "\u2014";
+                // That input is commented out in the markup above, so this
+                // must not assume it exists -- dereferencing a null here
+                // threw before the reveal below could run, which made a
+                // logged-in user see the "log in first" card.
+                const studentIdField = document.getElementById("email_student_id");
+                if (studentIdField) {
+                    studentIdField.value = data.student_id || "\u2014";
+                }
 
                 locked.hidden = true;
                 details.hidden = false;
