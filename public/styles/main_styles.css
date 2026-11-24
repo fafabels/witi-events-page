@@ -390,19 +390,6 @@ footer a{
     color: rgb(150, 100, 0);
 }
 
-/* Read-only context fields (e.g. the Student ID shown in Change Gmail).
-   Distinct from an input the user can type in. */
-.account_form input.readonly_field {
-    background: #f0f1f7;
-    color: #555;
-    border-style: dashed;
-    cursor: default;
-}
-
-.account_form input.readonly_field:focus {
-    outline: none;
-}
-
 .generic_link {
     color: blue;
 }

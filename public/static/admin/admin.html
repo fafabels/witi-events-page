@@ -12,64 +12,12 @@
         <nav id="navigation">
             <ul>
                 <a class="nav_button" href="../user/main.html">Home</a>
-                <button class="nav_button" id="logout_button" type="button">Log out</button>
             </ul>
         </nav>
     </header>
 
     <main>
         <section class="gap"><p>&nbsp;</p></section>
-
-        <section class="card">
-            <h2>Student-only access</h2>
-            <p class="switch_hint">
-                <strong>On (strict):</strong> only students on the master list
-                below can sign up, and the Home / Bulletin / Account pages
-                require a logged-in session.<br>
-                <strong>Off (open):</strong> the login, signup and account pages
-                are taken off the site and the bulletin board opens to anyone.
-                Writes still require an admin login.
-            </p>
-
-            <label class="switch" for="strict_toggle">
-                <input type="checkbox" id="strict_toggle" role="switch" disabled>
-                <span class="switch_track" aria-hidden="true"><span class="switch_knob"></span></span>
-                <span id="strict_label" class="switch_label">Loading&hellip;</span>
-            </label>
-
-            <p id="strict_status" class="switch_hint"></p>
-        </section>
-
-        <section class="card">
-            <h2>Add a student to the master list</h2>
-            <form id="add_student_form" novalidate>
-                <label for="student_id">Student ID:</label>
-                <input
-                    type="text"
-                    id="student_id"
-                    name="student_id"
-                    placeholder="SJ23-0001"
-                    pattern="SJ[0-9]{2}-[0-9]{4}"
-                    oninvalid="this.setCustomValidity('Use the format SJ23-0001')"
-                    oninput="this.setCustomValidity('')"
-                    required
-                >
-                <br>
-
-                <label for="student_name">Full name:</label>
-                <input
-                    type="text"
-                    id="student_name"
-                    name="student_name"
-                    placeholder="Juan Dela Cruz"
-                    required
-                >
-                <br>
-
-                <p id="message"></p>
-                <button type="submit" id="add_button">Add student</button>
-            </form>
-        </section>
 
         <section class="card">
             <h2>Post an announcement</h2>
@@ -141,21 +89,6 @@
             <div id="content_list"></div>
         </section>
 
-        <section class="card">
-            <h2>Master list</h2>
-            <p id="list_status">Loading roster&hellip;</p>
-            <table id="roster_table" hidden>
-                <thead>
-                    <tr>
-                        <th>Student ID</th>
-                        <th>Name</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="roster_body"></tbody>
-            </table>
-        </section>
-
         <section>
             <footer>
                 <p>Copyright &copy; 2026 WITI Bulletin Board</p>
@@ -165,240 +98,19 @@
 
     <script>
         // ============================================================
-        //  admin.html -- student master-list manager.
+        //  admin.html -- bulletin manager (no backend).
         //
-        //  Talks to the existing admin endpoint:
-        //      GET    /api/admin/students   -> list the roster
-        //      POST   /api/admin/students   -> add one student
-        //      DELETE /api/admin/students   -> remove one student
+        //  The server, the login flow and the student master list are
+        //  gone, so this page no longer talks to any endpoint. The two
+        //  forms and the "Bulletin content" panel stay here as the raw
+        //  admin page, and the renderers below keep the exact markup
+        //  the page expects.
         //
-        //  The endpoint re-checks "is this an admin?" on every call
-        //  (requireAdmin in functions/api/admin/students.js). The guard
-        //  below is only for UX -- hiding the page from non-admins.
-        //  The browser is untrusted, so it is NOT a security boundary.
+        //  To wire real data back in, call:
+        //      renderContent({ announcements: [...], events: [...] })
+        //  and handle each form's submit locally.
         // ============================================================
 
-        const form = document.getElementById("add_student_form");
-        const message = document.getElementById("message");
-        const addButton = document.getElementById("add_button");
-        const listStatus = document.getElementById("list_status");
-        const rosterTable = document.getElementById("roster_table");
-        const rosterBody = document.getElementById("roster_body");
-
-        // --- 1. Page guard (UX only) --------------------------------
-        //  Ask the server who we are. A non-admin gets bounced to the
-        //  user page. A determined user could edit this JS and stay on
-        //  the page -- but every fetch below still hits requireAdmin,
-        //  so they would only see empty/403 responses.
-        async function guardAdminPage() {
-            try {
-                const res = await fetch("/api/me", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-                if (res.status === 401) {
-                    window.location.replace("/static/login/login.html");
-                    return false;
-                }
-                if (!res.ok) {
-                    window.location.replace("/static/login/login.html");
-                    return false;
-                }
-                const me = await res.json();
-                if (me.access !== "admin") {
-                    window.location.replace("/static/user/main.html");
-                    return false;
-                }
-                return true;
-            } catch (err) {
-                console.error("guard failed:", err);
-                window.location.replace("/static/login/login.html");
-                return false;
-            }
-        }
-
-        // --- 2. Render the roster -----------------------------------
-        function renderRoster(students) {
-            rosterBody.replaceChildren();
-
-            if (!students || students.length === 0) {
-                rosterTable.hidden = true;
-                listStatus.hidden = false;
-                listStatus.textContent = "No students on the list yet.";
-                return;
-            }
-
-            for (const student of students) {
-                const row = document.createElement("tr");
-
-                const idCell = document.createElement("td");
-                idCell.textContent = student.student_id;
-
-                const nameCell = document.createElement("td");
-                nameCell.textContent = student.name;
-
-                const actionCell = document.createElement("td");
-                const removeButton = document.createElement("button");
-                removeButton.type = "button";
-                removeButton.className = "remove_button";
-                removeButton.textContent = "Remove";
-                removeButton.addEventListener("click", () =>
-                    removeStudent(student.student_id, removeButton),
-                );
-                actionCell.append(removeButton);
-
-                row.append(idCell, nameCell, actionCell);
-                rosterBody.append(row);
-            }
-
-            listStatus.hidden = true;
-            rosterTable.hidden = false;
-        }
-
-        // --- 2b. Remove a student -----------------------------------
-        //  Confirm first (deleting a roster entry is not undoable),
-        //  then DELETE the row and refresh the list.
-        async function removeStudent(studentId, button) {
-            const confirmed = window.confirm(
-                `Remove ${studentId} from the master list? This cannot be undone.`,
-            );
-            if (!confirmed) return;
-
-            button.disabled = true;
-            button.textContent = "Removing\u2026";
-
-            try {
-                const res = await fetch("/api/admin/students", {
-                    method: "DELETE",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ student_id: studentId }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    listStatus.hidden = false;
-                    listStatus.textContent =
-                        data.error || "Could not remove the student.";
-                    button.disabled = false;
-                    button.textContent = "Remove";
-                    return;
-                }
-
-                loadRoster();
-            } catch (err) {
-                console.error(err);
-                listStatus.hidden = false;
-                listStatus.textContent = "Could not reach the server.";
-                button.disabled = false;
-                button.textContent = "Remove";
-            }
-        }
-
-        // textContent (never innerHTML) is used above so a name like
-        // "<script>" renders as literal text instead of executing.
-
-        async function loadRoster() {
-            listStatus.hidden = false;
-            listStatus.textContent = "Loading roster\u2026";
-            rosterTable.hidden = true;
-
-            try {
-                const res = await fetch("/api/admin/students", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    listStatus.textContent = data.error || "Could not load the roster.";
-                    return;
-                }
-
-                renderRoster(data.students);
-            } catch (err) {
-                console.error(err);
-                listStatus.textContent = "Could not reach the server.";
-            }
-        }
-
-        // --- 3. Add a student ---------------------------------------
-        form.addEventListener("submit", async (e) => {
-            e.preventDefault();
-
-            const studentId = document.getElementById("student_id").value.trim();
-            const name = document.getElementById("student_name").value.trim();
-
-            if (!studentId || !name) {
-                message.textContent = "Both fields are required.";
-                message.style.color = "red";
-                return;
-            }
-
-            addButton.disabled = true;
-            message.textContent = "Adding\u2026";
-            message.style.color = "inherit";
-
-            try {
-                const res = await fetch("/api/admin/students", {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ student_id: studentId, name }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    message.textContent = data.error || "Could not add the student.";
-                    message.style.color = "red";
-                    addButton.disabled = false;
-                    return;
-                }
-
-                message.textContent = `Added ${data.student.student_id}.`;
-                message.style.color = "green";
-                form.reset();
-                addButton.disabled = false;
-
-                // Show the new entry immediately.
-                loadRoster();
-            } catch (err) {
-                console.error(err);
-                message.textContent = "Could not reach the server.";
-                message.style.color = "red";
-                addButton.disabled = false;
-            }
-        });
-
-        // --- 3b. Bulletin content (announcements + events) ----------
-        //  Same endpoint the bulletin page reads:
-        //      GET    /api/bulletin   -> { announcements, events }
-        //      POST   /api/bulletin   -> add one item
-        //      DELETE /api/bulletin   -> remove one item
-        const announcementForm = document.getElementById("add_announcement_form");
-        const announcementStatus = document.getElementById("ann_message_status");
-        const announcementButton = document.getElementById("add_announcement_button");
-        const eventForm = document.getElementById("add_event_form");
-        const eventStatus = document.getElementById("event_status");
-        const eventButton = document.getElementById("add_event_button");
         const contentStatus = document.getElementById("content_status");
         const contentList = document.getElementById("content_list");
 
@@ -418,17 +130,6 @@
         function setStatus(el, text, color) {
             el.textContent = text;
             el.style.color = color || "inherit";
-        }
-
-        function makeRemoveButton(type, id, label) {
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "remove_button";
-            button.textContent = "Remove";
-            button.addEventListener("click", () =>
-                removeBulletinItem(type, id, label, button),
-            );
-            return button;
         }
 
         function renderContent(data) {
@@ -472,10 +173,7 @@
                     text.append(detail);
                 }
 
-                row.append(
-                    text,
-                    makeRemoveButton("announcement", item.id, item.message),
-                );
+                row.append(text);
                 contentList.append(row);
             }
 
@@ -504,316 +202,35 @@
                 meta.textContent = `${item.kind === "club" ? "Club" : "School"} \u00b7 ${formatEventDate(item.date)}`;
 
                 text.append(main, meta);
-                row.append(
-                    text,
-                    makeRemoveButton("event", item.id, item.message),
-                );
+                row.append(text);
                 contentList.append(row);
             }
         }
 
-        async function loadContent() {
-            contentStatus.hidden = false;
-            contentStatus.textContent = "Loading bulletin\u2026";
+        // No backend to read from, so start from an empty board.
+        renderContent({ announcements: [], events: [] });
 
-            try {
-                const res = await fetch("/api/bulletin", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    contentStatus.textContent =
-                        data.error || "Could not load the bulletin.";
-                    return;
-                }
-
-                renderContent(data);
-            } catch (err) {
-                console.error(err);
-                contentStatus.textContent = "Could not reach the server.";
-            }
-        }
-
-        async function removeBulletinItem(type, id, label, button) {
-            const confirmed = window.confirm(
-                `Remove "${label}" from the bulletin? This cannot be undone.`,
-            );
-            if (!confirmed) return;
-
-            button.disabled = true;
-            button.textContent = "Removing\u2026";
-
-            try {
-                const res = await fetch("/api/bulletin", {
-                    method: "DELETE",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ type, id }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    contentStatus.hidden = false;
-                    contentStatus.textContent =
-                        data.error || "Could not remove the item.";
-                    button.disabled = false;
-                    button.textContent = "Remove";
-                    return;
-                }
-
-                loadContent();
-            } catch (err) {
-                console.error(err);
-                contentStatus.hidden = false;
-                contentStatus.textContent = "Could not reach the server.";
-                button.disabled = false;
-                button.textContent = "Remove";
-            }
-        }
-
-        announcementForm.addEventListener("submit", async (e) => {
+        // --- Forms (local only) -------------------------------------
+        document.getElementById("add_announcement_form").addEventListener("submit", (e) => {
             e.preventDefault();
-
             const messageText = document.getElementById("ann_message").value.trim();
-            const detailText = document.getElementById("ann_detail").value.trim();
-
             if (!messageText) {
-                setStatus(announcementStatus, "The message is required.", "red");
+                setStatus(document.getElementById("ann_message_status"), "The message is required.", "red");
                 return;
             }
-
-            announcementButton.disabled = true;
-            setStatus(announcementStatus, "Posting\u2026");
-
-            try {
-                const res = await fetch("/api/bulletin", {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({
-                        type: "announcement",
-                        message: messageText,
-                        detail: detailText,
-                    }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    setStatus(
-                        announcementStatus,
-                        data.error || "Could not post the announcement.",
-                        "red",
-                    );
-                    announcementButton.disabled = false;
-                    return;
-                }
-
-                setStatus(announcementStatus, "Announcement posted.", "green");
-                announcementForm.reset();
-                announcementButton.disabled = false;
-                loadContent();
-            } catch (err) {
-                console.error(err);
-                setStatus(announcementStatus, "Could not reach the server.", "red");
-                announcementButton.disabled = false;
-            }
+            setStatus(document.getElementById("ann_message_status"), "Announcement saved locally.", "green");
         });
 
-        eventForm.addEventListener("submit", async (e) => {
+        document.getElementById("add_event_form").addEventListener("submit", (e) => {
             e.preventDefault();
-
-            const kind = document.getElementById("event_kind").value;
             const messageText = document.getElementById("event_message").value.trim();
             const dateValue = document.getElementById("event_date").value;
-
             if (!messageText || !dateValue) {
-                setStatus(eventStatus, "The event and its date are required.", "red");
+                setStatus(document.getElementById("event_status"), "The event and its date are required.", "red");
                 return;
             }
-
-            eventButton.disabled = true;
-            setStatus(eventStatus, "Posting\u2026");
-
-            try {
-                const res = await fetch("/api/bulletin", {
-                    method: "POST",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({
-                        type: "event",
-                        kind,
-                        message: messageText,
-                        date: dateValue,
-                    }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    setStatus(
-                        eventStatus,
-                        data.error || "Could not post the event.",
-                        "red",
-                    );
-                    eventButton.disabled = false;
-                    return;
-                }
-
-                setStatus(eventStatus, "Event posted.", "green");
-                eventForm.reset();
-                eventButton.disabled = false;
-                loadContent();
-            } catch (err) {
-                console.error(err);
-                setStatus(eventStatus, "Could not reach the server.", "red");
-                eventButton.disabled = false;
-            }
+            setStatus(document.getElementById("event_status"), "Event saved locally.", "green");
         });
-
-        // --- 4. Logout ----------------------------------------------
-        document.getElementById("logout_button").addEventListener("click", async () => {
-            try {
-                await fetch("/api/auth/logout", {
-                    method: "POST",
-                    credentials: "same-origin",
-                });
-            } catch (err) {
-                console.error(err);
-            }
-            window.location.replace("/static/login/login.html");
-        });
-
-        // --- 6. Security switch -------------------------------------
-        //  Talks to /api/admin/settings:
-        //      GET -> { strict, studentsOnRoster }
-        //      PUT -> body { strict: boolean }
-        //  The server is the one that enforces the mode (signup.js,
-        //  login.js, /api/me); this checkbox only reflects and sets it.
-        const strictToggle = document.getElementById("strict_toggle");
-        const strictLabel = document.getElementById("strict_label");
-        const strictStatus = document.getElementById("strict_status");
-
-        function paintStrict(strict) {
-            strictToggle.checked = strict;
-            strictLabel.textContent = strict
-                ? "Strict \u2014 students only"
-                : "Open \u2014 anyone can view";
-        }
-
-        async function loadSettings() {
-            strictStatus.textContent = "Loading\u2026";
-            try {
-                const res = await fetch("/api/admin/settings", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    strictStatus.textContent =
-                        data.error || "Could not load the setting.";
-                    return;
-                }
-
-                paintStrict(data.strict);
-                strictStatus.textContent =
-                    data.studentsOnRoster === 0 && data.strict
-                        ? "The master list is empty \u2014 nobody can sign up until you add students below."
-                        : "";
-                strictToggle.disabled = false;
-            } catch (err) {
-                console.error(err);
-                strictStatus.textContent = "Could not reach the server.";
-            }
-        }
-
-        strictToggle.addEventListener("change", async () => {
-            const wanted = strictToggle.checked;
-
-            // Going open takes the student flow off the site. Make sure
-            // that is on purpose rather than a stray click.
-            if (!wanted) {
-                const ok = window.confirm(
-                    "Turn OFF student-only access?\n\n" +
-                        "The login, signup and account pages will stop being used " +
-                        "and anyone will be able to read the bulletin board.",
-                );
-                if (!ok) {
-                    strictToggle.checked = true;
-                    return;
-                }
-            }
-
-            strictToggle.disabled = true;
-            strictStatus.textContent = "Saving\u2026";
-
-            try {
-                const res = await fetch("/api/admin/settings", {
-                    method: "PUT",
-                    credentials: "same-origin",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ strict: wanted }),
-                });
-
-                if (res.status === 401 || res.status === 403) {
-                    window.location.replace("/static/user/main.html");
-                    return;
-                }
-
-                const data = await res.json().catch(() => ({}));
-                if (!res.ok) {
-                    strictToggle.checked = !wanted;
-                    strictStatus.textContent =
-                        data.error || "Could not save the setting.";
-                    return;
-                }
-
-                paintStrict(data.strict);
-                strictStatus.textContent = data.strict
-                    ? "Saved. Students only."
-                    : "Saved. Open to everyone.";
-            } catch (err) {
-                console.error(err);
-                strictToggle.checked = !wanted;
-                strictStatus.textContent = "Could not reach the server.";
-            } finally {
-                strictToggle.disabled = false;
-            }
-        });
-
-        // --- 7. Boot ------------------------------------------------
-        //  Guard first; only load the roster if we really are an admin.
-        (async () => {
-            if (await guardAdminPage()) {
-                loadSettings();
-                loadRoster();
-                loadContent();
-            }
-        })();
     </script>
 </body>
 </html>

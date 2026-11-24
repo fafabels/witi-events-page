@@ -1,0 +1,221 @@
+#credits {
+    color: white;
+    text-align: center;
+}
+
+#con {
+    display: flex;
+}
+
+body {
+    margin: 0px;
+    font-family: 'Playfair Display', serif;
+}
+
+body::before {
+    content: "";
+    position: fixed;   /* fixed instead of absolute */
+    top: 0; left: 0;
+    width: 100vw;      /* full viewport width */
+    height: 100dvh;    /* dynamic viewport height */
+    background: url("../assets/bg_image.jpg")  center/cover no-repeat;
+    filter: brightness(70%) blur(4px);
+    z-index: -1;         /* behind everything else */
+}
+
+h1, h2, h3, h4, h5, h6 {
+    margin: 0px;
+    font-family: 'Playfair Display', serif;
+}
+
+p {
+    font-size: 15px;
+}
+
+#main_sections {
+    text-align: center;
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    place-content: center;
+}
+
+#navigation {
+    place-content: center;
+    font-size: 12px;
+}
+
+.nav_button {
+    margin: 0 40px 0 40px;
+    text-align: center;
+    color: white;
+}
+
+header {
+    text-align: center;
+    background: rgb(47, 47, 215);
+    width: 100%;
+    z-index: 2;
+}
+
+.main-title {
+    color: white;
+    font-size: 30px;
+}
+
+.slides {
+    background: linear-gradient(to right, rgba(229, 223, 223, 0.105), rgba(255, 255, 255, 0.819));
+    box-shadow: 10px 10px rgba(0, 0, 0, 0.09);
+    /*width: 50%;*/
+    place-self: center;
+    border-radius: 20px;
+    margin: 20px;
+    font-size: 30px;
+    /*padding-top: 30px;
+    transform: translateY(20px);*/
+    padding: 2% 5%;
+    animation: slideDown 1s linear;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(0px); opacity: 0 }
+    to { transform: translateY(20px); opacity: 1 }
+}
+
+.slides p {
+    margin-top: 10px;
+}
+
+.gap {
+    margin: 50px;
+    opacity: 0;
+}
+
+ul {
+    padding: 0;
+}
+
+footer {
+    background: rgb(54, 56, 95);
+    padding-top: 10px;
+    padding-bottom: 40px;
+}
+
+footer p {
+    margin: 0px;
+    text-align: center;
+}
+
+footer p, h4 {
+    color: rgb(197, 195, 195);
+}
+
+footer a{
+    color: rgb(205, 205, 205);
+    font-size: 14px;
+    margin: 5px;
+}
+
+#footer-parent {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.footer-child {
+    margin: 10px 40px 10px 40px;
+    display: flex;
+    flex-direction: column;
+}
+
+.footer-redirections {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.footer-header {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+.footer-links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    flex-direction: column;
+}
+
+.footer-sections {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    flex-direction: column;
+}
+
+#gradient {
+    position: relative;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.35) 25%,
+        rgba(255, 255, 255, 0.75) 60%,
+        rgba(255, 255, 255, 0.95) 100%
+    );
+    /* keep the scrollbar from sitting on top of the content */
+    scrollbar-gutter: stable;
+}
+
+
+.gradient-content {
+    display: block;
+    width: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 2;
+}
+
+/*every direct child is a block that stacks under the previous one*/
+.gradient-content > * {
+    display: block;
+    margin-bottom: 24px;
+}
+
+.gradient-content > *:last-child {
+    margin-bottom: 0;
+}
+
+
+#gradient::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 120px;
+    pointer-events: none;
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.9) 100%
+    );
+    z-index: 1;
+}
+

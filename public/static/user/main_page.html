@@ -21,7 +21,6 @@
                 <ul>
                     <a class="nav_button" href="./main_page.html">Home</a>
                     <a class="nav_button" href="./bulletin.html">Bulletin</a>
-                    <a class="nav_button" href="./account.html">Account</a>
                     <a class="nav_button" href="./settings.html">Settings</a>
                 </ul>
             </nav>
@@ -68,32 +67,5 @@
                 </footer>
             </section>
         </main>
-        
-        <script>
-            // ============================================================
-            //  main_page.html -- session gate (UX only).
-            //
-            //  Ask the server who we are. Not logged in -> login page.
-            //  This is a convenience, NOT a security boundary: the
-            //  browser is untrusted and someone can edit this script.
-            //  Real enforcement is requireUser/requireAdmin on the
-            //  endpoints that return actual data.
-            // ============================================================
-            (async () => {
-                try {
-                    const res = await fetch("/api/me", {
-                        credentials: "same-origin",
-                        headers: { Accept: "application/json" },
-                    });
-                    if (!res.ok) {
-                        window.location.replace("/static/login/login.html");
-                    }
-                } catch (err) {
-                    console.error("session check failed:", err);
-                    window.location.replace("/static/login/login.html");
-                }
-            })();
-        </script>
-    
     </body>
 </html>

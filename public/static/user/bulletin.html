@@ -21,8 +21,7 @@
                 <ul>
                     <a class="nav_button" href="/static/user/main.html">Home</a>
                     <a class="nav_button" href="/static/user/bulletin.html">Bulletin</a>
-                    <a class="nav_button" href="/static/user/account.html" id="account_link" hidden>Account</a>
-                    <a class="nav_button" href="/static/user/settings.html" id="settings_link" hidden>Settings</a>
+                    <a class="nav_button" href="/static/user/settings.html">Settings</a>
                 </ul>
             </nav>
         </header>
@@ -94,22 +93,26 @@
         </main>
         <script>
             // ============================================================
-            //  bulletin.html -- renders the board from /api/bulletin.
+            //  bulletin.html -- renders the board.
             //
-            //  GET /api/bulletin returns:
-            //    { announcements: [{ id, message, detail }],
-            //      events:        [{ id, kind, message, date }] }
+            //  There is no server any more, so the board is empty by
+            //  default. renderAnnouncements() / renderEvents() below keep
+            //  the exact layout the markup expects:
             //
-            //  a_con    <- announcements. The short message is shown;
+            //  a_list   <- announcements. The short message is shown;
             //              clicking it (or hovering) reveals `detail`
             //              directly below the message.
-            //  se_con   <- events with kind === "school"
-            //  ce_con   <- events with kind === "club"
+            //  se_ann_con <- events with kind === "school"
+            //  ce_ann_con <- events with kind === "club"
             //              Each event shows its message and its date
             //              formatted as "July 20, 2020".
             //
-            //  Everything is built with textContent, never innerHTML, so
-            //  an admin-entered message like "<script>" renders as text.
+            //  To show content again, call them with data, e.g.
+            //      renderAnnouncements([{ message: "...", detail: "..." }]);
+            //      renderEvents(seList, [{ message: "...", date: "2026-07-20" }]);
+            //
+            //  Everything is built with textContent, never innerHTML, so a
+            //  message like "<script>" renders as text.
             // ============================================================
 
             const aList = document.getElementById("a_list");
@@ -220,71 +223,13 @@
             }
 
             async function loadBulletin() {
-                try {
-                    const res = await fetch("/api/bulletin", {
-                        credentials: "same-origin",
-                        headers: { Accept: "application/json" },
-                    });
-
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                    const data = await res.json();
-                    const events = data.events || [];
-
-                    renderAnnouncements(data.announcements);
-                    renderEvents(
-                        seList,
-                        events.filter((e) => e.kind === "school"),
-                    );
-                    renderEvents(
-                        ceList,
-                        events.filter((e) => e.kind === "club"),
-                    );
-                } catch (err) {
-                    console.error("could not load the bulletin:", err);
-                    showEmpty(aList, "Announcements are unavailable right now.");
-                    showEmpty(seList, "Events are unavailable right now.");
-                    showEmpty(ceList, "Events are unavailable right now.");
-                }
+                // No backend: show the empty state for each board.
+                renderAnnouncements([]);
+                renderEvents(seList, []);
+                renderEvents(ceList, []);
             }
 
             loadBulletin();
-        
-        
-        
-            // ============================================================
-            //  bulletin.html -- session gate (UX only).
-            //
-            //  /api/me says whether a session exists AND which mode the
-            //  admin switch is on. Strict mode: no session -> log in.
-            //  Open mode: nobody logs in, so just stay on the board.
-            //  Enforcement is /api/bulletin + requireAdmin on its writes.
-            // ============================================================
-            (async () => {
-                const accountLink = document.getElementById("account_link");
-                const settingsLink = document.getElementById("settings_link");
-
-                try {
-                    const res = await fetch("/api/me", {
-                        credentials: "same-origin",
-                        headers: { Accept: "application/json" },
-                    });
-
-                    if (res.status === 401) {
-                        window.location.replace("/static/login/login.html");
-                        return;
-                    }
-                    if (!res.ok) return; // keep the board usable
-
-                    const me = await res.json();
-                    if (me.strict) {
-                        accountLink.hidden = false;
-                        settingsLink.hidden = false;
-                    }
-                } catch (err) {
-                    console.error("session check failed:", err);
-                }
-            })();
         </script>
     </body>
 </html>

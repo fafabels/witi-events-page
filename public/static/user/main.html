@@ -21,8 +21,7 @@
                 <ul>
                     <a class="nav_button" onclick="window.location.reload()" href="./main.html">Home</a>
                     <a class="nav_button" href="/static/user/bulletin.html">Bulletin</a>
-                    <a class="nav_button" href="./account.html" id="account_link" hidden>Account</a>
-                    <a class="nav_button" href="./settings.html" id="settings_link">Settings</a>
+                    <a class="nav_button" href="./settings.html">Settings</a>
                     <a class="nav_button" href="./credits.html">Credits</a>
                 </ul>
             </nav>
@@ -71,60 +70,5 @@
                 <p>© 2026 WITI Bulletin Board. All rights reserved.</p>
             </footer>
         </main>
-        <!--
-    <script>
-            // ============================================================
-            //  main.html -- session gate (UX only).
-            //
-            //  superseded by the live gate at the bottom of the body.
-            // ============================================================
-        </script>
-    -->
-    <script>
-        // ============================================================
-        //  main.html -- session gate + Account link (UX only).
-        //
-        //  /api/me reports both who we are and which security mode the
-        //  admin switch is on:
-        //      strict mode  -> no session means "go log in"; the
-        //                      Account / Settings links are shown.
-        //      open mode    -> there is no login flow, so the visitor
-        //                      stays here and those links are hidden
-        //                      (there is nothing to edit without a
-        //                      session).
-        //
-        //  Not a security boundary: /api/bulletin serves the content
-        //  and the admin endpoints re-check requireAdmin server-side.
-        // ============================================================
-        (async () => {
-            const accountLink = document.getElementById("account_link");
-            const settingsLink = document.getElementById("settings_link");
-
-            try {
-                const res = await fetch("/api/me", {
-                    credentials: "same-origin",
-                    headers: { Accept: "application/json" },
-                });
-
-                // In strict mode a logged-out visitor gets 401 -> log in.
-                if (res.status === 401) {
-                    window.location.replace("/static/login/login.html");
-                    return;
-                }
-                if (!res.ok) return; // server hiccup: keep the page usable
-
-                const me = await res.json();
-
-                if (!me.strict) {
-                    if (accountLink) accountLink.hidden = true;
-                    if (settingsLink) settingsLink.hidden = true;
-                } else if (accountLink) {
-                    accountLink.hidden = false;
-                }
-            } catch (err) {
-                console.error("session check failed:", err);
-            }
-        })();
-    </script>
     </body>
 </html>
