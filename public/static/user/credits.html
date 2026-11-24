@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>WITI Bulletin</title>
+        <link rel="stylesheet" href="../../styles/main_styles.css">
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Kameron:wght@400..700&family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Kameron:wght@400..700&family=Lobster+Two:ital,wght@0,400;0,700;1,400;1,700&family=Noto+Serif+Display:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+    </head>
+    <body>
+        <header>
+            
+            <nav id="navigation">
+                <ul>
+                    <a class="nav_button" onclick="window.location.reload()" href="./main.html">Home</a>
+                    <a class="nav_button" href="/static/user/bulletin.html">Bulletin</a>
+                    <a class="nav_button" href="./account.html" id="account_link" hidden>Account</a>
+                    <a class="nav_button" href="./settings.html" id="settings_link">Settings</a>
+                    <a class="nav_button" href="./credits.html">Credits</a>
+                </ul>
+            </nav>
+        </header>
+        <main>
+            <h1>Credits</h1>
+            <footer>
+                <p>© 2026 WITI Bulletin Board. All rights reserved.</p>
+            </footer>
+        </main>
+        <!--
+    <script>
+            // ============================================================
+            //  main.html -- session gate (UX only).
+            //
+            //  superseded by the live gate at the bottom of the body.
+            // ============================================================
+        </script>
+    -->
+    <script>
+        // ============================================================
+        //  main.html -- session gate + Account link (UX only).
+        //
+        //  /api/me reports both who we are and which security mode the
+        //  admin switch is on:
+        //      strict mode  -> no session means "go log in"; the
+        //                      Account / Settings links are shown.
+        //      open mode    -> there is no login flow, so the visitor
+        //                      stays here and those links are hidden
+        //                      (there is nothing to edit without a
+        //                      session).
+        //
+        //  Not a security boundary: /api/bulletin serves the content
+        //  and the admin endpoints re-check requireAdmin server-side.
+        // ============================================================
+        (async () => {
+            const accountLink = document.getElementById("account_link");
+            const settingsLink = document.getElementById("settings_link");
+
+            try {
+                const res = await fetch("/api/me", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+
+                // In strict mode a logged-out visitor gets 401 -> log in.
+                if (res.status === 401) {
+                    window.location.replace("/static/login/login.html");
+                    return;
+                }
+                if (!res.ok) return; // server hiccup: keep the page usable
+
+                const me = await res.json();
+
+                if (!me.strict) {
+                    if (accountLink) accountLink.hidden = true;
+                    if (settingsLink) settingsLink.hidden = true;
+                } else if (accountLink) {
+                    accountLink.hidden = false;
+                }
+            } catch (err) {
+                console.error("session check failed:", err);
+            }
+        })();
+    </script>
+    </body>
+</html>
