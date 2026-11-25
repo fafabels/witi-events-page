@@ -2,42 +2,37 @@
 //  functions/_utils/admin.js
 //  Shared helpers for the admin credential store.
 //
-//  The store itself is a Cloudflare KV namespace bound as
-//  WITI_ADMINS (see wrangler.toml). One key per admin:
+//  The store is a D1 database bound as `witi_users` (see
+//  wrangler.toml). Two tables, created by schema.sql:
 //
-//      key   : admin:david
-//      value : {"name":"david","password":{...hash...},"createdAt":"..."}
+//      admin_credentials  one row per admin name + password HASH
+//      admin_sessions     one row per logged-in browser
 //
-//  The VALUE is a PBKDF2 hash, never the plaintext password.
-//  KV is readable by anything holding the account's API token
-//  and by anyone who can open the Cloudflare dashboard, so a
-//  plaintext password sitting in there would leak every admin
-//  login. A hash still lets us answer "does this match?" without
-//  ever storing the answer itself.
+//  Passwords are PBKDF2-SHA256 hashes with a per-admin random
+//  salt, never plaintext -- a leaked database must not hand out
+//  logins.
+//
+//  The login cookie holds a random token; the database stores only
+//  its SHA-256, so the cookie cannot be forged or read back, and
+//  deleting an admin deletes their sessions too.
 //
 //  Files/folders in functions/ whose names start with "_" are
 //  not routed to a URL by Cloudflare Pages, so this is a plain
 //  module you can import from any endpoint.
 // ============================================================
 
-// Exactly what the KV binding is called in wrangler.toml:
-//   [[kv_namespaces]]
-//       binding = "WITI_ADMINS"
-const KV_BINDING = "WITI_ADMINS";
+// Exactly what the D1 binding is called in wrangler.toml:
+//   [[d1_databases]]
+//       binding = "witi_users"
+const DB_BINDING = "witi_users";
 
-// Every credential key lives under this prefix so listing is a
-// single `list({ prefix })` call and so internal keys (like the
-// session-signing secret) can never collide with an admin name.
-export const ADMIN_PREFIX = "admin:";
+export const SESSION_COOKIE = "witi_admin";
+const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
+const PBKDF2_ITERATIONS = 100000;
 
 // No length rule: an admin may use any password they like. The
 // only requirement is that it is not empty -- an empty password
 // would mean "anyone can log in as this admin".
-
-const SECRET_KEY = "__session_secret__";
-export const SESSION_COOKIE = "witi_admin";
-const SESSION_TTL_SECONDS = 60 * 60 * 8; // 8 hours
-const PBKDF2_ITERATIONS = 100000;
 
 // --- Responses --------------------------------------------------
 export function json(data, status = 200, extraHeaders = {}) {
@@ -51,14 +46,18 @@ export function json(data, status = 200, extraHeaders = {}) {
   });
 }
 
-function kv(env) {
-  const namespace = env?.[KV_BINDING];
-  if (!namespace) {
+function db(env) {
+  const database = env?.[DB_BINDING];
+  if (!database) {
     throw new Error(
-      `KV binding "${KV_BINDING}" is missing. Check wrangler.toml.`,
+      `D1 binding "${DB_BINDING}" is missing. Check wrangler.toml.`,
     );
   }
-  return namespace;
+  return database;
+}
+
+export function now() {
+  return Math.floor(Date.now() / 1000);
 }
 
 // --- Base64 helpers --------------------------------------------
@@ -75,19 +74,13 @@ export function base64ToBytes(value) {
   return bytes;
 }
 
-function toBase64Url(text) {
-  return btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function fromBase64Url(value) {
-  let s = value.replace(/-/g, "+").replace(/_/g, "/");
-  while (s.length % 4) s += "=";
-  return atob(s);
+function bytesToHex(bytes) {
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 // --- Input rules -------------------------------------------------
 // "David" and "david" are the same admin: names are matched
-// case-insensitively (the KV key is lowercased).
+// case-insensitively via the stored name_key = lower(name).
 export function normalizeName(raw) {
   const name = String(raw ?? "")
     .trim()
@@ -113,8 +106,8 @@ export function validatePassword(raw) {
   return { password };
 }
 
-export function keyFor(name) {
-  return ADMIN_PREFIX + name.toLowerCase();
+export function nameKey(name) {
+  return String(name).toLowerCase();
 }
 
 // --- Password hashing ------------------------------------------
@@ -152,86 +145,93 @@ function constantTimeEqual(a, b) {
   return diff === 0;
 }
 
-export async function verifyPassword(password, record) {
-  if (!record?.salt || !record?.hash) return false;
+// `row` is an admin_credentials row.
+export async function verifyPassword(password, row) {
+  if (!row?.password_salt || !row?.password_hash) return false;
   const actual = await pbkdf2(
     password,
-    base64ToBytes(record.salt),
-    Number(record.iterations) || PBKDF2_ITERATIONS,
+    base64ToBytes(row.password_salt),
+    Number(row.password_iters) || PBKDF2_ITERATIONS,
   );
-  return constantTimeEqual(actual, base64ToBytes(record.hash));
+  return constantTimeEqual(actual, base64ToBytes(row.password_hash));
+}
+
+async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(text),
+  );
+  return bytesToHex(new Uint8Array(digest));
 }
 
 // --- Credential CRUD --------------------------------------------
 export async function getAdmin(env, name) {
-  const raw = await kv(env).get(keyFor(name));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null; // corrupt entry -> treat as "no such admin"
-  }
+  return db(env)
+    .prepare("SELECT * FROM admin_credentials WHERE name_key = ?1")
+    .bind(nameKey(name))
+    .first();
 }
 
+// Upsert: creates the admin, or replaces their password if the
+// name already exists. Returns { row, replaced }.
 export async function saveAdmin(env, name, password) {
-  const record = {
-    name,
-    password: await hashPassword(password),
-    createdAt: new Date().toISOString(),
-  };
-  await kv(env).put(keyFor(name), JSON.stringify(record), {
-    // Metadata lets the admin page list names without reading
-    // every value (which would need one GET per admin).
-    metadata: { name: record.name, createdAt: record.createdAt },
-  });
-  return record;
+  const existing = await getAdmin(env, name);
+  const hashed = await hashPassword(password);
+  const ts = now();
+
+  await db(env)
+    .prepare(
+      `INSERT INTO admin_credentials
+         (name, name_key, password_algo, password_iters,
+          password_salt, password_hash, created_at, updated_at)
+       VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+       ON CONFLICT (name_key) DO UPDATE SET
+         name           = excluded.name,
+         password_algo  = excluded.password_algo,
+         password_iters = excluded.password_iters,
+         password_salt  = excluded.password_salt,
+         password_hash  = excluded.password_hash,
+         updated_at     = excluded.updated_at`,
+    )
+    .bind(
+      name,
+      nameKey(name),
+      hashed.algo,
+      hashed.iterations,
+      hashed.salt,
+      hashed.hash,
+      ts,
+    )
+    .run();
+
+  const row = await getAdmin(env, name);
+  return { row, replaced: Boolean(existing) };
 }
 
-export async function deleteAdmin(env, name) {
-  await kv(env).delete(keyFor(name));
+export async function deleteAdmin(env, adminId) {
+  // ON DELETE CASCADE takes the admin's sessions with it.
+  await db(env)
+    .prepare("DELETE FROM admin_credentials WHERE admin_id = ?1")
+    .bind(adminId)
+    .run();
 }
 
+// Names and dates only -- the hash columns never leave the server.
 export async function listAdmins(env) {
-  const result = await kv(env).list({ prefix: ADMIN_PREFIX });
-  return (result.keys || [])
-    .map((key) => ({
-      name: key.metadata?.name || key.name.slice(ADMIN_PREFIX.length),
-      createdAt: key.metadata?.createdAt || null,
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const { results } = await db(env)
+    .prepare(
+      `SELECT admin_id, name, created_at, updated_at
+         FROM admin_credentials
+        ORDER BY name COLLATE NOCASE ASC`,
+    )
+    .all();
+  return (results || []).map((row) => ({
+    name: row.name,
+    createdAt: new Date(row.created_at * 1000).toISOString(),
+  }));
 }
 
-// --- Session cookie ---------------------------------------------
-// The cookie is a signed payload: <payload>.<hmac>. It holds no
-// password and cannot be edited -- change one character of the
-// payload and the signature no longer matches.
-async function getSecret(env) {
-  const namespace = kv(env);
-  let secret = await namespace.get(SECRET_KEY);
-  if (!secret) {
-    const bytes = crypto.getRandomValues(new Uint8Array(32));
-    secret = bytesToBase64(bytes);
-    await namespace.put(SECRET_KEY, secret);
-  }
-  return secret;
-}
-
-async function sign(secret, data) {
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(data),
-  );
-  return new Uint8Array(signature);
-}
-
+// --- Sessions ---------------------------------------------------
 function readCookie(request, name) {
   const header = request.headers.get("Cookie");
   if (!header) return null;
@@ -244,56 +244,62 @@ function readCookie(request, name) {
   }
 }
 
-export async function createSession(env, name) {
-  const secret = await getSecret(env);
-  const payload = toBase64Url(
-    JSON.stringify({
-      name,
-      exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
-    }),
-  );
-  const signature = bytesToBase64(await sign(secret, payload));
-  return {
-    token: `${payload}.${toBase64Url(signature)}`,
-    maxAge: SESSION_TTL_SECONDS,
-  };
+export async function createSession(env, adminId) {
+  const tokenBytes = crypto.getRandomValues(new Uint8Array(32));
+  const token = bytesToHex(tokenBytes);
+  const tokenHash = await sha256Hex(token);
+  const ts = now();
+
+  await db(env)
+    .prepare(
+      `INSERT INTO admin_sessions (token_hash, admin_id, created_at, expires_at)
+       VALUES (?1, ?2, ?3, ?4)`,
+    )
+    .bind(tokenHash, adminId, ts, ts + SESSION_TTL_SECONDS)
+    .run();
+
+  // Opportunistic cleanup; a failure here must not break login.
+  try {
+    await db(env)
+      .prepare("DELETE FROM admin_sessions WHERE expires_at < ?1")
+      .bind(ts)
+      .run();
+  } catch {
+    // ignore
+  }
+
+  return { token, maxAge: SESSION_TTL_SECONDS };
 }
 
+// Resolves the session cookie to { admin_id, name }, or null.
 export async function readSession(request, env) {
   const token = readCookie(request, SESSION_COOKIE);
   if (!token) return null;
 
-  const split = token.lastIndexOf(".");
-  if (split < 1) return null;
-  const payload = token.slice(0, split);
-  const signature = token.slice(split + 1);
-
-  const secret = await getSecret(env);
-  const expected = bytesToBase64(await sign(secret, payload));
-  if (
-    !constantTimeEqual(
-      base64ToBytes(fromBase64Url(signature)),
-      base64ToBytes(expected),
+  const tokenHash = await sha256Hex(token);
+  const row = await db(env)
+    .prepare(
+      `SELECT c.admin_id, c.name
+         FROM admin_sessions s
+         JOIN admin_credentials c ON c.admin_id = s.admin_id
+        WHERE s.token_hash = ?1
+          AND s.expires_at > ?2`,
     )
-  ) {
-    return null;
-  }
+    .bind(tokenHash, now())
+    .first();
 
-  let data;
-  try {
-    data = JSON.parse(fromBase64Url(payload));
-  } catch {
-    return null;
-  }
-  if (!data?.name || !data?.exp) return null;
-  if (data.exp < Math.floor(Date.now() / 1000)) return null;
+  if (!row) return null;
+  return { adminId: row.admin_id, name: row.name };
+}
 
-  // The credential may have been deleted since the cookie was
-  // issued -- deleting an admin must end their session.
-  const record = await getAdmin(env, data.name);
-  if (!record) return null;
-
-  return { name: record.name };
+export async function destroySession(request, env) {
+  const token = readCookie(request, SESSION_COOKIE);
+  if (!token) return;
+  const tokenHash = await sha256Hex(token);
+  await db(env)
+    .prepare("DELETE FROM admin_sessions WHERE token_hash = ?1")
+    .bind(tokenHash)
+    .run();
 }
 
 export function sessionCookie(request, token, maxAge) {

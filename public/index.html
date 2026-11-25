@@ -78,9 +78,9 @@
         //  "You're an admin?" asks the server who you are:
         //    * a valid admin session cookie  -> straight to admin.html
         //    * no session / no admins yet    -> the login page
-        //  The admin name/password pairs live in the WITI_ADMINS KV
-        //  namespace and are checked by /api/admin/login, so nothing
-        //  secret is ever held on this page.
+        //  The admin name/password pairs live in the admin_credentials
+        //  table of the D1 database, checked by /api/admin/login, so
+        //  nothing secret is ever held on this page.
         // ============================================================
 
         const adminLink = document.getElementById("admin_link");

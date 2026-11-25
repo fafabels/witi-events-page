@@ -4,8 +4,8 @@
 //   POST -> create or replace one admin credential
 //           Body: { "name": "david", "password": "abcd12345678" }
 //
-// The store is the WITI_ADMINS KV namespace: one key per admin,
-// value is the PBKDF2 hash record (never the plaintext password).
+// The store is the admin_credentials table in the `witi_users` D1
+// database; passwords are PBKDF2 hashes, never plaintext.
 //
 // Access rule:
 //   * If the store is EMPTY, the first credential may be created
@@ -81,19 +81,23 @@ export async function onRequestPost({ request, env }) {
       );
     }
 
-    await saveAdmin(env, nameResult.name, passwordResult.password);
+    const { replaced } = await saveAdmin(
+      env,
+      nameResult.name,
+      passwordResult.password,
+    );
 
     return json(
       {
         ok: true,
-        replaced: Boolean(existing),
+        replaced,
         name: nameResult.name,
         passwordLength: passwordResult.password.length,
-        message: existing
+        message: replaced
           ? `Password updated for ${nameResult.name}.`
           : `${nameResult.name} can now log in as an admin.`,
       },
-      existing ? 200 : 201,
+      replaced ? 200 : 201,
     );
   } catch (err) {
     return json({ error: err.message }, 500);

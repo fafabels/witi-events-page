@@ -2,8 +2,10 @@ name = "witi-bulletin-board"
 pages_build_output_dir = "public"
 compatibility_date = "2025-01-01"
 
-# Admin name/password pairs, one key per admin ("admin:<name>").
-# Read/written by functions/api/admin/*.
-[[kv_namespaces]]
-binding = "WITI_ADMINS"
-id = "94f6589968224a28a5abd13b0ecd858e"
+# Admin credentials + admin sessions live in D1 ("witi-users").
+# The tables are created by schema.sql:
+#   npx wrangler d1 execute witi-users --file=./schema.sql --remote
+[[d1_databases]]
+binding = "witi_users"
+database_name = "witi-users"
+database_id = "e1b36b5d-45e1-4ce4-8f17-9690f0442084"

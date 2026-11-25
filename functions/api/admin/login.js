@@ -1,13 +1,13 @@
 // POST /api/admin/login
 // Body: { "name": "david", "password": "abcd12345678" }
 //
-// Checks the name/password against the WITI_ADMINS KV store.
-// On success it sets an HttpOnly session cookie and returns the
-// admin's name; the browser never sees the password again.
+// Checks the name/password against the admin_credentials table in
+// the `witi_users` D1 database. On success it stores a session row
+// and sets an HttpOnly cookie holding a random token; the browser
+// never sees the password again.
 import {
   json,
   normalizeName,
-  validatePassword,
   getAdmin,
   verifyPassword,
   createSession,
@@ -26,8 +26,7 @@ export async function onRequestPost({ request, env }) {
   const nameResult = normalizeName(body?.name);
   if (nameResult.error) return json({ error: nameResult.error }, 400);
 
-  // Length is checked too, but login should not hint at the real
-  // password length beyond what the form already says.
+  // Any length is allowed; it just has to match the stored hash.
   const password = String(body?.password ?? "");
 
   let record = null;
@@ -37,7 +36,7 @@ export async function onRequestPost({ request, env }) {
     return json({ error: err.message }, 500);
   }
 
-  const ok = record ? await verifyPassword(password, record.password) : false;
+  const ok = record ? await verifyPassword(password, record) : false;
 
   if (!ok) {
     // Same message for "no such name" and "wrong password" so the
@@ -45,14 +44,13 @@ export async function onRequestPost({ request, env }) {
     return json({ error: "That name and password do not match." }, 401);
   }
 
-  const { token, maxAge } = await createSession(env, record.name);
+  const { token, maxAge } = await createSession(env, record.admin_id);
   return json({ ok: true, name: record.name }, 200, {
     "set-cookie": sessionCookie(request, token, maxAge),
   });
 }
 
-// GET /api/admin/login -> small helper for the login page: is the
-// store still empty (first-run setup) and is anyone logged in?
+// GET /api/admin/login -> is the store still empty (first-run setup)?
 export async function onRequestGet({ request, env }) {
   try {
     const admins = await listAdmins(env);
