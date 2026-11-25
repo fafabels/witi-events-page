@@ -114,6 +114,21 @@ form textarea {
     margin: 12px 0;
 }
 
+#cred_password_count, #credential_list_status {
+    min-height: 20px;
+    margin: 6px 0;
+    font-size: 13px;
+}
+
+#credential_status {
+    min-height: 20px;
+    margin: 12px 0;
+}
+
+#credential_table {
+    margin-top: 8px;
+}
+
 /* --- Bulletin content list ---------------------------------- */
 #content_list h3 {
     margin: 18px 0 8px;

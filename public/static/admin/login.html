@@ -3,34 +3,225 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>WITI Bulletin Board - Admin login</title>
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Playfair Display', Georgia, serif;
+            background: rgb(54, 54, 65);
+        }
+
+        .login-card {
+            width: min(90vw, 380px);
+            padding: 28px 32px;
+            border-radius: 20px;
+            background: rgb(119, 119, 165);
+            box-shadow: 0 0 20px 5px rgb(0, 0, 0);
+            color: white;
+        }
+
+        h1 {
+            margin: 0 0 18px;
+            font-size: 26px;
+            text-align: center;
+        }
+
+        label {
+            display: block;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 4px;
+            padding: 8px 10px;
+            font-family: inherit;
+            font-size: 15px;
+            border: 1px solid rgba(0, 0, 0, 0.35);
+            border-radius: 8px;
+        }
+
+        #password_hint {
+            margin: 4px 0 0;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        #login_status {
+            min-height: 20px;
+            margin: 14px 0 8px;
+            font-size: 14px;
+        }
+
+        button[type="submit"] {
+            width: 100%;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 15px;
+            border: none;
+            border-radius: 10px;
+            background: rgb(236, 251, 255);
+            cursor: pointer;
+        }
+
+        button[type="submit"]:hover {
+            background: rgb(255, 255, 255);
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: default;
+        }
+
+        .back {
+            display: block;
+            margin-top: 16px;
+            text-align: center;
+            font-size: 13px;
+            color: rgb(236, 251, 255);
+            opacity: 0.75;
+        }
+
+        .back:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
-    <h1 class="main-title">Login</h1>
-    <form id="login_form">
-        <label for="username">Username:</label>
-        <input
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Enter your name"
-            maxlength="50"
-            required
-        >
-        <br>
+    <div class="login-card">
+        <h1>Admin login</h1>
 
-        <label for="password">Password:</label>
-        <input
-            type="password"
-            id="password"
-            name="password"
-            placeholder="Enter your provided password"
-            maxlength="12"
-            required
-        >
-        <br>
+        <form id="login_form" novalidate>
+            <label for="username">Name</label>
+            <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Enter your name"
+                maxlength="32"
+                autocomplete="username"
+                required
+            >
 
-        <p id="login_status"></p>
-        <button type="submit" id="login_button">Login</button>
+            <label for="password">Password</label>
+            <input
+                type="password"
+                id="password"
+                name="password"
+                placeholder="Enter your provided password"
+                minlength="12"
+                maxlength="12"
+                autocomplete="current-password"
+                required
+            >
+            <p id="password_hint">Passwords are exactly 12 characters.</p>
+
+            <p id="login_status"></p>
+            <button type="submit" id="login_button">Login</button>
+        </form>
+
+        <a class="back" href="../../index.html">&larr; Back to the bulletin board</a>
+    </div>
+
+    <script>
+        // ============================================================
+        //  login.html -- admin sign-in.
+        //
+        //  The name/password are checked by /api/admin/login against
+        //  the WITI_ADMINS KV namespace, i.e. against the key - value
+        //  pairs an admin saved on admin.html. Nothing is compared in
+        //  the browser: the password never has to be shipped to the
+        //  page for the check to work, and the reply sets an HttpOnly
+        //  session cookie so the admin page can trust the visit.
+        // ============================================================
+
+        const form = document.getElementById("login_form");
+        const status = document.getElementById("login_status");
+        const button = document.getElementById("login_button");
+
+        function setStatus(text, color) {
+            status.textContent = text;
+            status.style.color = color || "inherit";
+        }
+
+        function goToAdmin() {
+            // replace() so the login page is not in the back history.
+            window.location.replace("./admin.html");
+        }
+
+        // Already signed in? Skip the form.
+        (async () => {
+            try {
+                const res = await fetch("/api/admin/session", {
+                    credentials: "same-origin",
+                    headers: { Accept: "application/json" },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.authenticated) {
+                    setStatus(`Already logged in as ${data.name}.`, "green");
+                    goToAdmin();
+                }
+            } catch {
+                // Offline or no functions -- let the form try instead.
+            }
+        })();
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById("username").value.trim();
+            const password = document.getElementById("password").value;
+
+            if (!name) {
+                setStatus("Enter your name.", "red");
+                return;
+            }
+            if (password.length !== 12) {
+                setStatus("A password is exactly 12 characters.", "red");
+                return;
+            }
+
+            button.disabled = true;
+            setStatus("Checking\u2026");
+
+            try {
+                const res = await fetch("/api/admin/login", {
+                    method: "POST",
+                    credentials: "same-origin",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Accept: "application/json",
+                    },
+                    body: JSON.stringify({ name, password }),
+                });
+
+                let data = {};
+                try {
+                    data = await res.json();
+                } catch {
+                    // Non-JSON reply.
+                }
+
+                if (!res.ok) {
+                    setStatus(data.error || "Login failed.", "red");
+                    return;
+                }
+
+                setStatus(`Welcome, ${data.name}.`, "green");
+                goToAdmin();
+            } catch {
+                setStatus("Could not reach the server.", "red");
+            } finally {
+                button.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>

@@ -12,12 +12,62 @@
         <nav id="navigation">
             <ul>
                 <a class="nav_button" href="../user/main.html">Home</a>
+                <a class="nav_button" href="#" id="logout_button">Log out</a>
             </ul>
         </nav>
     </header>
 
     <main>
         <section class="gap"><p>&nbsp;</p></section>
+
+        <section class="card">
+            <h2>Admin key &ndash; value pairs</h2>
+            <p id="cred_who">Checking your session&hellip;</p>
+
+            <form id="add_credential_form" novalidate>
+                <label for="cred_name">Name:</label>
+                <input
+                    type="text"
+                    id="cred_name"
+                    name="cred_name"
+                    placeholder="david"
+                    maxlength="32"
+                    autocomplete="off"
+                    required
+                >
+                <br>
+
+                <label for="cred_password">Password:</label>
+                <input
+                    type="password"
+                    id="cred_password"
+                    name="cred_password"
+                    placeholder="Exactly 12 characters"
+                    minlength="12"
+                    maxlength="12"
+                    autocomplete="new-password"
+                    required
+                >
+                <br>
+
+                <p id="cred_password_count">0 / 12 characters</p>
+                <p id="credential_status"></p>
+                <button type="submit" id="add_credential_button">Save key &ndash; value pair</button>
+            </form>
+
+            <h3>Saved admins</h3>
+            <p id="credential_list_status">Loading admins&hellip;</p>
+            <table id="credential_table" hidden>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Added</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="credential_rows"></tbody>
+            </table>
+        </section>
 
         <section class="card">
             <h2>Post an announcement</h2>
@@ -231,6 +281,238 @@
             }
             setStatus(document.getElementById("event_status"), "Event saved locally.", "green");
         });
+
+        // ============================================================
+        //  Admin key - value pairs (Cloudflare KV).
+        //
+        //  Every pair is stored in the WITI_ADMINS namespace through
+        //  /api/admin/credentials -- the page never touches KV itself.
+        //  Values are shown as names only: the server keeps the
+        //  password as a hash and never sends it back.
+        // ============================================================
+
+        const PASSWORD_LENGTH = 12;
+
+        const credWho = document.getElementById("cred_who");
+        const credPassword = document.getElementById("cred_password");
+        const credPasswordCount = document.getElementById("cred_password_count");
+        const credStatus = document.getElementById("credential_status");
+        const addCredentialButton = document.getElementById("add_credential_button");
+        const credentialRows = document.getElementById("credential_rows");
+        const credentialTable = document.getElementById("credential_table");
+        const credentialListStatus = document.getElementById("credential_list_status");
+
+        let currentAdmin = null;
+
+        async function api(path, options = {}) {
+            const res = await fetch(path, {
+                credentials: "same-origin",
+                ...options,
+                headers: { Accept: "application/json", ...(options.headers || {}) },
+            });
+            let data = {};
+            try {
+                data = await res.json();
+            } catch {
+                // Non-JSON reply (e.g. the site's HTML 404 page).
+            }
+            return { res, data };
+        }
+
+        function formatAdded(value) {
+            if (!value) return "\u2014";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return "\u2014";
+            return date.toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+            });
+        }
+
+        function renderCredentialList(admins, setupRequired) {
+            credentialRows.replaceChildren();
+            credentialTable.hidden = admins.length === 0;
+
+            if (admins.length === 0) {
+                credentialListStatus.hidden = false;
+                credentialListStatus.textContent =
+                    "No admins yet. Save the first key - value pair to lock the board down.";
+                return;
+            }
+            credentialListStatus.hidden = true;
+
+            for (const admin of admins) {
+                const row = document.createElement("tr");
+
+                const nameCell = document.createElement("td");
+                nameCell.textContent = admin.name;
+                if (admin.name === currentAdmin) nameCell.textContent += " (you)";
+
+                const dateCell = document.createElement("td");
+                dateCell.textContent = formatAdded(admin.createdAt);
+
+                const actionCell = document.createElement("td");
+                const removeButton = document.createElement("button");
+                removeButton.type = "button";
+                removeButton.className = "remove_button";
+                removeButton.textContent = "Remove";
+                // Keep the last admin in place or the store would go
+                // empty and first-run setup would open to everyone.
+                removeButton.disabled = !currentAdmin || admins.length <= 1;
+                removeButton.addEventListener("click", () => removeCredential(admin.name, removeButton));
+                actionCell.append(removeButton);
+
+                row.append(nameCell, dateCell, actionCell);
+                credentialRows.append(row);
+            }
+        }
+
+        async function loadCredentials() {
+            credentialListStatus.hidden = false;
+            credentialListStatus.textContent = "Loading admins\u2026";
+            try {
+                const { res, data } = await api("/api/admin/credentials");
+                if (!res.ok) {
+                    credentialTable.hidden = true;
+
+                    if (res.status === 401) {
+                        // The store is not empty and we have no session.
+                        credentialListStatus.textContent =
+                            "You must log in to manage admins.";
+                        setStatus(credStatus, "Not logged in \u2014 heading to the login page\u2026", "red");
+                        setTimeout(() => {
+                            window.location.replace("./login.html");
+                        }, 1500);
+                        return;
+                    }
+
+                    credentialListStatus.textContent = data.error || "Could not load admins.";
+                    return;
+                }
+                renderCredentialList(data.admins || [], data.setupRequired);
+            } catch {
+                credentialListStatus.textContent = "Could not reach the server.";
+            }
+        }
+
+        async function loadSession() {
+            try {
+                const { res, data } = await api("/api/admin/session");
+                currentAdmin = res.ok && data.authenticated ? data.name : null;
+            } catch {
+                currentAdmin = null;
+            }
+
+            if (currentAdmin) {
+                credWho.textContent = `Logged in as ${currentAdmin}.`;
+            } else {
+                credWho.textContent = "Not logged in \u2014 open the admin login page first.";
+            }
+        }
+
+        async function removeCredential(name, button) {
+            if (!window.confirm(`Remove ${name}? They will no longer be able to log in.`)) {
+                return;
+            }
+            button.disabled = true;
+            setStatus(credStatus, `Removing ${name}\u2026`);
+            try {
+                const { res, data } = await api(
+                    `/api/admin/credentials/${encodeURIComponent(name)}`,
+                    { method: "DELETE" },
+                );
+                if (!res.ok) {
+                    setStatus(credStatus, data.error || "Could not remove that admin.", "red");
+                    button.disabled = false;
+                    return;
+                }
+                setStatus(credStatus, data.removed + " removed.", "green");
+                await loadCredentials();
+            } catch {
+                setStatus(credStatus, "Could not reach the server.", "red");
+                button.disabled = false;
+            }
+        }
+
+        credPassword.addEventListener("input", () => {
+            const count = credPassword.value.length;
+            credPasswordCount.textContent = `${count} / ${PASSWORD_LENGTH} characters`;
+            credPasswordCount.style.color =
+                count === 0 ? "inherit" : count === PASSWORD_LENGTH ? "green" : "red";
+        });
+
+        document.getElementById("add_credential_form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const nameInput = document.getElementById("cred_name");
+            const name = nameInput.value.trim();
+            const password = credPassword.value;
+
+            if (!name) {
+                setStatus(credStatus, "Enter a name.", "red");
+                nameInput.focus();
+                return;
+            }
+            if (password.length !== PASSWORD_LENGTH) {
+                setStatus(
+                    credStatus,
+                    `A password must be exactly ${PASSWORD_LENGTH} characters (currently ${password.length}).`,
+                    "red",
+                );
+                credPassword.focus();
+                return;
+            }
+
+            addCredentialButton.disabled = true;
+            setStatus(credStatus, "Saving to Cloudflare KV\u2026");
+            try {
+                const { res, data } = await api("/api/admin/credentials", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, password }),
+                });
+
+                if (!res.ok) {
+                    if (res.status === 401) {
+                        setStatus(credStatus, "Log in first \u2014 heading to the login page\u2026", "red");
+                        setTimeout(() => {
+                            window.location.replace("./login.html");
+                        }, 1500);
+                        return;
+                    }
+                    setStatus(credStatus, data.error || "Could not save that pair.", "red");
+                    return;
+                }
+
+                setStatus(credStatus, data.message || "Saved.", "green");
+                credPassword.value = "";
+                credPasswordCount.textContent = `0 / ${PASSWORD_LENGTH} characters`;
+                credPasswordCount.style.color = "inherit";
+                nameInput.value = "";
+                await loadSession();
+                await loadCredentials();
+            } catch {
+                setStatus(credStatus, "Could not reach the server.", "red");
+            } finally {
+                addCredentialButton.disabled = false;
+            }
+        });
+
+        document.getElementById("logout_button").addEventListener("click", async (e) => {
+            e.preventDefault();
+            try {
+                await api("/api/admin/logout", { method: "POST" });
+            } catch {
+                // Fall through to the login page either way.
+            }
+            window.location.replace("./login.html");
+        });
+
+        (async () => {
+            await loadSession();
+            await loadCredentials();
+        })();
     </script>
 </body>
 </html>
