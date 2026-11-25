@@ -7,9 +7,61 @@
     <noscript>
         <meta http-equiv="refresh" content="0; url=./static/user/bulletin.html">
     </noscript>
+    <style>
+        body {
+            background: rgb(54, 54, 65);
+        }
+        #gate {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            text-align: center;
+            background: rgb(119, 119, 165);
+            width: 50%;
+            border-radius: 40px;
+            box-shadow: 0px 0px 20px 5px rgb(0, 0, 0);
+        }
+        button {
+            height: 40px;
+            width: 20%;
+            justify-self: center;
+            align-self: center;
+            border-radius: 10px;
+            background: rgb(236, 251, 255);
+            border: 1px solid rgb(0, 0, 0);
+            cursor: pointer;
+        }
+        button:hover {
+            background: rgb(255, 255, 255);
+        }
+        button:active {
+            background: rgb(200, 200, 200);
+        }
+        h1 {
+            color: white;
+            width: 80%;
+            justify-self: center;
+            align-self: center;
+        }
+        a {
+            color: rgb(72, 72, 72);
+            margin: 20px;
+            opacity: 0.5;
+        }
+        a:hover {
+            opacity: 1;
+        }
+    </style>
 </head>
 <body>
-    <p id="status">Opening the bulletin board&hellip;</p>
+    <div id="gate">
+        <h1>Click the button to enter the bulletin board</h1>
+        <button onclick="window.location.href='./static/user/main.html'">Open</button>
+        <a href="./static/admin/login.html">You're an admin? click here to log in</a>
+    </div>
 
     <script>
         // ============================================================
@@ -19,7 +71,7 @@
         //  page does not ask anyone "who am I?". It simply opens the
         //  user-facing bulletin board.
         // ============================================================
-        window.location.replace("./static/user/bulletin.html");
+        //window.location.replace("./static/user/bulletin.html");
     </script>
 </body>
 </html>

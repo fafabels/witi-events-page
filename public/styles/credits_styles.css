@@ -3,10 +3,6 @@
     text-align: center;
 }
 
-#con {
-    display: flex;
-}
-
 body {
     margin: 0px;
     font-family: 'Playfair Display', serif;
@@ -32,6 +28,10 @@ p {
     font-size: 15px;
 }
 
+h1 {
+    font-size: 100px;
+}
+
 #main_sections {
     text-align: center;
     display: flex;
@@ -53,7 +53,7 @@ p {
 
 header {
     text-align: center;
-    background: rgb(47, 47, 215);
+    background: rgb(97, 97, 179);
     width: 100%;
     z-index: 2;
 }
