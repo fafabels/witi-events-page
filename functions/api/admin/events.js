@@ -1,7 +1,9 @@
 // /api/admin/events
 //
-//   GET  -> { events: { school: [...], club: [...] } }  (session required)
-//   POST -> body { "kind": "school"|"club", "message": "...", "date": "YYYY-MM-DD" }
+// GET  -> { events: { school: [...], club: [...] }, today }
+//         Unlike /api/bulletin this INCLUDES past events, flagged
+//         `past: true`, so a postponed one can still be removed.
+// POST -> body { "kind": "school"|"club", "message": "...", "date": "YYYY-MM-DD" }
 //           -> 201 { event }
 //
 // `kind` decides which board the event lands on in bulletin.html,
@@ -11,14 +13,16 @@ import {
   validateEvent,
   listEvents,
   addEvent,
+  todayIso,
   unauthorized,
 } from "../../_utils/bulletin.js";
 
 export async function onRequestGet({ request, env }) {
   try {
     if (!(await readSession(request, env))) return unauthorized();
-    const events = await listEvents(env);
+    const events = await listEvents(env, null, { includePast: true });
     return json({
+      today: todayIso(),
       events: {
         school: events.filter((event) => event.kind === "school"),
         club: events.filter((event) => event.kind === "club"),

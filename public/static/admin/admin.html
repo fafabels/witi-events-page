@@ -12,6 +12,7 @@
         <nav id="navigation">
             <ul>
                 <a class="nav_button" href="../user/main.html">Home</a>
+                <a class="nav_button" href="../user/bulletin.html">Bulletin</a>
                 <a class="nav_button" href="#" id="logout_button">Log out</a>
             </ul>
         </nav>
@@ -175,6 +176,24 @@
             el.style.color = color || "inherit";
         }
 
+        // Small "Remove" button used on every bulletin content row.
+        // The click handler is wired in renderContent(); it needs the
+        // item it belongs to, so it is passed in rather than looked up.
+        function makeRemoveButton(label, onClick) {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "remove_button";
+            button.textContent = "Remove";
+            button.setAttribute("aria-label", `Remove: ${label}`);
+            button.addEventListener("click", onClick);
+            return button;
+        }
+
+        // Resolves when the admin confirms, or when they cancel.
+        function confirmRemove(what) {
+            return window.confirm(`Remove \"${what}\"? This cannot be undone.`);
+        }
+
         function renderContent(data) {
             contentList.replaceChildren();
 
@@ -216,7 +235,11 @@
                     text.append(detail);
                 }
 
-                row.append(text);
+                const remove = makeRemoveButton(item.message, () => {
+                    removeAnnouncement(item, remove);
+                });
+
+                row.append(text, remove);
                 contentList.append(row);
             }
 
@@ -233,7 +256,7 @@
 
             for (const item of events) {
                 const row = document.createElement("div");
-                row.className = "content_row";
+                row.className = item.past ? "content_row content_past" : "content_row";
 
                 const text = document.createElement("div");
                 const main = document.createElement("p");
@@ -242,11 +265,72 @@
 
                 const meta = document.createElement("p");
                 meta.className = "content_detail";
-                meta.textContent = `${item.kind === "club" ? "Club" : "School"} \u00b7 ${formatEventDate(item.date)}`;
+                const parts = [
+                    `${item.kind === "club" ? "Club" : "School"} \u00b7 ${formatEventDate(item.date)}`,
+                ];
+                if (item.happeningNow) parts.push("Happening now");
+                if (item.past) parts.push("Past \u2014 hidden from the board");
+                meta.textContent = parts.join(" \u00b7 ");
 
                 text.append(main, meta);
-                row.append(text);
+
+                const remove = makeRemoveButton(item.message, () => {
+                    removeEvent(item, remove);
+                });
+
+                row.append(text, remove);
                 contentList.append(row);
+            }
+        }
+
+        // --- Removing content ---------------------------------------
+        async function removeAnnouncement(item, button) {
+            if (!confirmRemove(item.message)) return;
+
+            button.disabled = true;
+            setStatus(contentStatus, "Removing announcement\u2026");
+            contentStatus.hidden = false;
+            try {
+                const { res, data } = await api(
+                    `/api/admin/announcements/${encodeURIComponent(item.id)}`,
+                    { method: "DELETE" },
+                );
+                if (!res.ok) {
+                    if (handleAuthError(contentStatus, res)) return;
+                    setStatus(contentStatus, data.error || "Could not remove it.", "red");
+                    button.disabled = false;
+                    return;
+                }
+                setStatus(contentStatus, "Announcement removed.", "green");
+                await loadContent();
+            } catch {
+                setStatus(contentStatus, "Could not reach the server.", "red");
+                button.disabled = false;
+            }
+        }
+
+        async function removeEvent(item, button) {
+            if (!confirmRemove(item.message)) return;
+
+            button.disabled = true;
+            setStatus(contentStatus, "Removing event\u2026");
+            contentStatus.hidden = false;
+            try {
+                const { res, data } = await api(
+                    `/api/admin/events/${encodeURIComponent(item.id)}`,
+                    { method: "DELETE" },
+                );
+                if (!res.ok) {
+                    if (handleAuthError(contentStatus, res)) return;
+                    setStatus(contentStatus, data.error || "Could not remove it.", "red");
+                    button.disabled = false;
+                    return;
+                }
+                setStatus(contentStatus, "Event removed.", "green");
+                await loadContent();
+            } catch {
+                setStatus(contentStatus, "Could not reach the server.", "red");
+                button.disabled = false;
             }
         }
 
@@ -515,21 +599,40 @@
             contentStatus.hidden = false;
             contentStatus.textContent = "Loading bulletin\u2026";
 
-            // Everyone can read the board; this is just for the preview.
+            // The admin view reads /api/admin/* rather than /api/bulletin,
+            // because it must also list events whose date has already
+            // passed -- those are hidden from students but still need a
+            // Remove button in case the event was postponed.
             try {
-                const { res, data } = await api("/api/bulletin");
-                if (!res.ok) {
-                    contentStatus.textContent = data.error || "Could not load the bulletin.";
+                const [annRes, eventRes] = await Promise.all([
+                    api("/api/admin/announcements"),
+                    api("/api/admin/events"),
+                ]);
+
+                if (!annRes.res.ok) {
+                    if (handleAuthError(contentStatus, annRes.res)) return;
+                    contentStatus.textContent =
+                        annRes.data.error || "Could not load the bulletin.";
+                    return;
+                }
+                if (!eventRes.res.ok) {
+                    if (handleAuthError(contentStatus, eventRes.res)) return;
+                    contentStatus.textContent =
+                        eventRes.data.error || "Could not load the bulletin.";
                     return;
                 }
 
-                const events = [
-                    ...((data.events && data.events.school) || []),
-                    ...((data.events && data.events.club) || []),
-                ].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+                const school = (eventRes.data.events && eventRes.data.events.school) || [];
+                const club = (eventRes.data.events && eventRes.data.events.club) || [];
+
+                // Upcoming first, then any leftover past ones at the end.
+                const events = [...school, ...club].sort((a, b) => {
+                    if (Boolean(a.past) !== Boolean(b.past)) return a.past ? 1 : -1;
+                    return String(a.date).localeCompare(String(b.date));
+                });
 
                 renderContent({
-                    announcements: data.announcements || [],
+                    announcements: annRes.data.announcements || [],
                     events,
                 });
             } catch {

@@ -23,6 +23,7 @@
                     <a class="nav_button" href="./bulletin.html">Bulletin</a>
                     <a class="nav_button" href="./settings.html">Settings</a>
                     <a class="nav_button" href="./credits.html">Credits</a>
+                    <a class="nav_button" href="../admin/login.html">Admin</a>
                 </ul>
             </nav>
         </header>
@@ -192,10 +193,13 @@
                 }
             }
 
-            // --- se_con / ce_con: event message + date ----------------
+            // --- se_con / ce_con: event message + date + status --------
+            //  Events are already filtered server-side: ones whose date has
+            //  passed never arrive here. An event dated today gets the
+            //  "Happening now" badge next to its date.
             function renderEvents(container, events) {
                 if (!events || events.length === 0) {
-                    showEmpty(container, "No events");
+                    showEmpty(container, "No upcoming events");
                     return;
                 }
 
@@ -203,17 +207,29 @@
 
                 for (const item of events) {
                     const row = document.createElement("div");
-                    row.className = "event";
+                    row.className = item.happeningNow ? "event happening_now" : "event";
 
                     const message = document.createElement("p");
                     message.className = "event_message";
                     message.textContent = item.message;
 
+                    // Date and status sit together on the right.
+                    const meta = document.createElement("div");
+                    meta.className = "event_meta";
+
+                    if (item.happeningNow) {
+                        const badge = document.createElement("span");
+                        badge.className = "event_badge";
+                        badge.textContent = "Happening now";
+                        meta.append(badge);
+                    }
+
                     const date = document.createElement("p");
                     date.className = "event_date";
                     date.textContent = formatEventDate(item.date);
+                    meta.append(date);
 
-                    row.append(message, date);
+                    row.append(message, meta);
                     container.append(row);
                 }
             }

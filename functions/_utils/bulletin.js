@@ -49,7 +49,9 @@ export function validateAnnouncement(body) {
 }
 
 export function validateEvent(body) {
-  const kind = String(body?.kind ?? "").trim().toLowerCase();
+  const kind = String(body?.kind ?? "")
+    .trim()
+    .toLowerCase();
   const message = String(body?.message ?? "").trim();
   const date = String(body?.date ?? "").trim();
 
@@ -78,6 +80,30 @@ function isIsoDate(value) {
   );
 }
 
+// --- Dates --------------------------------------------------------
+// The board runs on Philippine time (UTC+8), not on the server's
+// UTC clock -- otherwise an event on "July 20" would vanish at
+// 8:00 AM local time on July 20 instead of at midnight.
+const BOARD_UTC_OFFSET_HOURS = 8;
+
+// Today's date as "YYYY-MM-DD" in board time.
+export function todayIso(nowMs = Date.now()) {
+  const shifted = new Date(nowMs + BOARD_UTC_OFFSET_HOURS * 3600 * 1000);
+  return shifted.toISOString().slice(0, 10);
+}
+
+// An event is "happening now" on its own date, and gone the day
+// after: date 2026-07-20 shows on the 20th and is hidden from the
+// 21st onward. Because the dates are zero-padded YYYY-MM-DD, a
+// plain string compare is a correct date compare.
+export function isPast(date, today = todayIso()) {
+  return String(date) < today;
+}
+
+export function isHappeningNow(date, today = todayIso()) {
+  return String(date) === today;
+}
+
 // --- Reads -------------------------------------------------------
 function rowToAnnouncement(row) {
   return {
@@ -88,13 +114,15 @@ function rowToAnnouncement(row) {
   };
 }
 
-function rowToEvent(row) {
+function rowToEvent(row, today) {
   return {
     id: row.event_id,
     kind: row.kind,
     message: row.message,
     date: row.event_date,
     createdAt: new Date(row.created_at * 1000).toISOString(),
+    happeningNow: isHappeningNow(row.event_date, today),
+    past: isPast(row.event_date, today),
   };
 }
 
@@ -109,23 +137,37 @@ export async function listAnnouncements(env) {
   return (results || []).map(rowToAnnouncement);
 }
 
-export async function listEvents(env, kind) {
-  const query = kind
-    ? `SELECT event_id, kind, message, event_date, created_at
-         FROM events
-        WHERE kind = ?1
-        ORDER BY event_date ASC, event_id ASC`
-    : `SELECT event_id, kind, message, event_date, created_at
-         FROM events
-        ORDER BY event_date ASC, event_id ASC`;
+// includePast: the admin page passes true so a postponed event can
+// still be found and removed. The public board never does.
+export async function listEvents(env, kind, { includePast = false } = {}) {
+  const today = todayIso();
+  const where = [];
+  const binds = [];
+
+  if (kind) {
+    where.push(`kind = ?${binds.length + 1}`);
+    binds.push(kind);
+  }
+  if (!includePast) {
+    where.push(`event_date >= ?${binds.length + 1}`);
+    binds.push(today);
+  }
+
+  const query = `SELECT event_id, kind, message, event_date, created_at
+                   FROM events
+                  ${where.length ? "WHERE " + where.join(" AND ") : ""}
+                  ORDER BY event_date ASC, event_id ASC`;
+
   const statement = db(env).prepare(query);
-  const { results } = kind
-    ? await statement.bind(kind).all()
+  const { results } = binds.length
+    ? await statement.bind(...binds).all()
     : await statement.all();
-  return (results || []).map(rowToEvent);
+
+  return (results || []).map((row) => rowToEvent(row, today));
 }
 
-// Everything the board needs, in one round trip.
+// Everything the public board needs, in one round trip. Past events
+// are filtered out here, so the page never has to know the rule.
 export async function listBulletin(env) {
   const [announcements, events] = await Promise.all([
     listAnnouncements(env),
@@ -137,6 +179,7 @@ export async function listBulletin(env) {
       school: events.filter((event) => event.kind === "school"),
       club: events.filter((event) => event.kind === "club"),
     },
+    today: todayIso(),
   };
 }
 
@@ -176,7 +219,7 @@ export async function addEvent(env, { kind, message, date }) {
     )
     .bind(result.meta.last_row_id)
     .first();
-  return rowToEvent(row);
+  return rowToEvent(row, todayIso());
 }
 
 // Returns true when a row was actually deleted.

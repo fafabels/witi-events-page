@@ -155,6 +155,17 @@ form textarea {
     white-space: pre-wrap;
 }
 
+/* A past event: still listed for the admin, but visually muted so
+   it is obvious it no longer appears on the board. */
+.content_past .content_main {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.content_row .remove_button {
+    flex-shrink: 0;
+}
+
 #message, #list_status {
     min-height: 20px;
     margin: 12px 0;
