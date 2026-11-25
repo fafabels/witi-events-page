@@ -29,6 +29,10 @@ h1, h2, h3, h4, h5, h6 {
     padding: 1% 5%;
 }
 
+#school_announcement h2 {
+    color: white;
+}
+
 #a_con {
     background: rgb(230, 230, 238);
     border-radius: 20px;
@@ -197,13 +201,26 @@ header {
     top: 0;
     width: 100%;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
+
+header h2 {
+    color: white;
+    margin: 0 20px 0 20px;
+}
+
+header nav {
+    margin-right: 10%;
+}
+
 header::before {
     content: "";
     position: fixed;   /* fixed instead of absolute */
     top: 0; left: 0;
     width: 100%;      /* full viewport width */
-    height: 14%;    /* dynamic viewport height */
+    height: 10%;    /* dynamic viewport height */
     background: url("../assets/bg_image.jpg")  center/cover no-repeat;
     filter: blur(1px);
     z-index: -2;         /* behind everything else */
@@ -214,7 +231,7 @@ header::after {
     position: fixed;   /* fixed instead of absolute */
     top: 0; left: 0;
     width: 100%;      /* full viewport width */
-    height: 14%;    /* dynamic viewport height */
+    height: 10%;    /* dynamic viewport height */
     background: rgb(106, 97, 183);
     filter: blur(2px);
     opacity: 0.5;
@@ -223,11 +240,35 @@ header::after {
 
 .main-title {
     color: white;
-    font-size: 30px;
+    
 }
 
 ul {
     padding: 0;
+}
+
+ul button {
+    background: rgb(130, 130, 195);
+    border-radius: 10px;
+    width: 70px;
+    height: 30px;
+    border:#5a60a2 solid 1px;
+}
+
+ul button:hover {
+    background: rgb(115, 115, 189);
+    border-radius: 10px;
+    width: 70px;
+    height: 30px;
+    border:#5a60a2 solid 1px;
+}
+
+ul button:active {
+    background: rgb(100, 100, 180);
+    border-radius: 10px;
+    width: 70px;
+    height: 30px;
+    border:#5a60a2 solid 1px;
 }
 
 footer {
