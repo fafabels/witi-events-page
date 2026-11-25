@@ -146,17 +146,12 @@
 
     <script>
         // ============================================================
-        //  admin.html -- bulletin manager (no backend).
+        //  admin.html -- bulletin manager.
         //
-        //  The server, the login flow and the student master list are
-        //  gone, so this page no longer talks to any endpoint. The two
-        //  forms and the "Bulletin content" panel stay here as the raw
-        //  admin page, and the renderers below keep the exact markup
-        //  the page expects.
-        //
-        //  To wire real data back in, call:
-        //      renderContent({ announcements: [...], events: [...] })
-        //  and handle each form's submit locally.
+        //  Posting an announcement or an event writes to D1 through
+        //  /api/admin/announcements and /api/admin/events, so the
+        //  bulletin board picks it up on its next load. Reading and
+        //  deleting the current content goes to the same place.
         // ============================================================
 
         const contentStatus = document.getElementById("content_status");
@@ -255,38 +250,14 @@
             }
         }
 
-        // No backend to read from, so start from an empty board.
-        renderContent({ announcements: [], events: [] });
-
-        // --- Forms (local only) -------------------------------------
-        document.getElementById("add_announcement_form").addEventListener("submit", (e) => {
-            e.preventDefault();
-            const messageText = document.getElementById("ann_message").value.trim();
-            if (!messageText) {
-                setStatus(document.getElementById("ann_message_status"), "The message is required.", "red");
-                return;
-            }
-            setStatus(document.getElementById("ann_message_status"), "Announcement saved locally.", "green");
-        });
-
-        document.getElementById("add_event_form").addEventListener("submit", (e) => {
-            e.preventDefault();
-            const messageText = document.getElementById("event_message").value.trim();
-            const dateValue = document.getElementById("event_date").value;
-            if (!messageText || !dateValue) {
-                setStatus(document.getElementById("event_status"), "The event and its date are required.", "red");
-                return;
-            }
-            setStatus(document.getElementById("event_status"), "Event saved locally.", "green");
-        });
-
         // ============================================================
-        //  Admin key - value pairs (Cloudflare KV).
+        //  Admin key - value pairs (D1).
         //
-        //  Every pair is stored in the WITI_ADMINS namespace through
-        //  /api/admin/credentials -- the page never touches KV itself.
-        //  Values are shown as names only: the server keeps the
-        //  password as a hash and never sends it back.
+        //  Every pair is stored in the admin_credentials table of the
+        //  witi_users database through /api/admin/credentials -- the
+        //  page never touches the database itself. Values are shown as
+        //  names only: the server keeps the password as a hash and
+        //  never sends it back.
         //
         //  Passwords have no length limit; they just cannot be empty.
         // ============================================================
@@ -506,7 +477,139 @@
         (async () => {
             await loadSession();
             await loadCredentials();
+            await loadContent();
         })();
+
+        // ============================================================
+        //  Announcements + events (D1).
+        //
+        //  The forms below are the source of what bulletin.html shows:
+        //    announcement -> message is the short line, detail is the
+        //                    text revealed on hover / click
+        //    event        -> kind picks the board (school / club) and
+        //                    date is the day it is shown under
+        // ============================================================
+
+        const annForm = document.getElementById("add_announcement_form");
+        const annMessageInput = document.getElementById("ann_message");
+        const annDetailInput = document.getElementById("ann_detail");
+        const annStatus = document.getElementById("ann_message_status");
+        const addAnnouncementButton = document.getElementById("add_announcement_button");
+
+        const eventForm = document.getElementById("add_event_form");
+        const eventKindInput = document.getElementById("event_kind");
+        const eventMessageInput = document.getElementById("event_message");
+        const eventDateInput = document.getElementById("event_date");
+        const eventStatus = document.getElementById("event_status");
+        const addEventButton = document.getElementById("add_event_button");
+
+        // A 401 means the session expired or was signed out elsewhere.
+        function handleAuthError(statusEl, res) {
+            if (res.status !== 401) return false;
+            setStatus(statusEl, "Log in first \u2014 heading to the login page\u2026", "red");
+            setTimeout(() => window.location.replace("./login.html"), 1500);
+            return true;
+        }
+
+        async function loadContent() {
+            contentStatus.hidden = false;
+            contentStatus.textContent = "Loading bulletin\u2026";
+
+            // Everyone can read the board; this is just for the preview.
+            try {
+                const { res, data } = await api("/api/bulletin");
+                if (!res.ok) {
+                    contentStatus.textContent = data.error || "Could not load the bulletin.";
+                    return;
+                }
+
+                const events = [
+                    ...((data.events && data.events.school) || []),
+                    ...((data.events && data.events.club) || []),
+                ].sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+                renderContent({
+                    announcements: data.announcements || [],
+                    events,
+                });
+            } catch {
+                contentStatus.textContent = "Could not reach the server.";
+            }
+        }
+
+        annForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const messageText = annMessageInput.value.trim();
+            const detailText = annDetailInput.value.trim();
+
+            if (!messageText) {
+                setStatus(annStatus, "The message is required.", "red");
+                annMessageInput.focus();
+                return;
+            }
+
+            addAnnouncementButton.disabled = true;
+            setStatus(annStatus, "Posting\u2026");
+            try {
+                const { res, data } = await api("/api/admin/announcements", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ message: messageText, detail: detailText }),
+                });
+
+                if (!res.ok) {
+                    if (handleAuthError(annStatus, res)) return;
+                    setStatus(annStatus, data.error || "Could not post that announcement.", "red");
+                    return;
+                }
+
+                setStatus(annStatus, data.message || "Announcement posted.", "green");
+                annForm.reset();
+                await loadContent();
+            } catch {
+                setStatus(annStatus, "Could not reach the server.", "red");
+            } finally {
+                addAnnouncementButton.disabled = false;
+            }
+        });
+
+        eventForm.addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const kind = eventKindInput.value;
+            const messageText = eventMessageInput.value.trim();
+            const dateValue = eventDateInput.value;
+
+            if (!messageText || !dateValue) {
+                setStatus(eventStatus, "The event and its date are required.", "red");
+                return;
+            }
+
+            addEventButton.disabled = true;
+            setStatus(eventStatus, "Posting\u2026");
+            try {
+                const { res, data } = await api("/api/admin/events", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ kind, message: messageText, date: dateValue }),
+                });
+
+                if (!res.ok) {
+                    if (handleAuthError(eventStatus, res)) return;
+                    setStatus(eventStatus, data.error || "Could not post that event.", "red");
+                    return;
+                }
+
+                setStatus(eventStatus, data.message || "Event posted.", "green");
+                eventForm.reset();
+                await loadContent();
+            } catch {
+                setStatus(eventStatus, "Could not reach the server.", "red");
+            } finally {
+                addEventButton.disabled = false;
+            }
+        });
     </script>
 </body>
 </html>

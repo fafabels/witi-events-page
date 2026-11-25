@@ -94,23 +94,18 @@
         </main>
         <script>
             // ============================================================
-            //  bulletin.html -- renders the board.
+            //  bulletin.html -- renders the board from /api/bulletin.
             //
-            //  There is no server any more, so the board is empty by
-            //  default. renderAnnouncements() / renderEvents() below keep
-            //  the exact layout the markup expects:
+            //  The layout is fixed; the data comes from the D1 tables
+            //  the admin page writes to:
             //
-            //  a_list   <- announcements. The short message is shown;
-            //              clicking it (or hovering) reveals `detail`
-            //              directly below the message.
+            //  a_list     <- announcements. The short message is shown;
+            //                hovering, focusing or clicking reveals
+            //                `detail` directly below the message.
             //  se_ann_con <- events with kind === "school"
             //  ce_ann_con <- events with kind === "club"
-            //              Each event shows its message and its date
-            //              formatted as "July 20, 2020".
-            //
-            //  To show content again, call them with data, e.g.
-            //      renderAnnouncements([{ message: "...", detail: "..." }]);
-            //      renderEvents(seList, [{ message: "...", date: "2026-07-20" }]);
+            //                Each event shows its message and its date
+            //                formatted as "July 20, 2020".
             //
             //  Everything is built with textContent, never innerHTML, so a
             //  message like "<script>" renders as text.
@@ -224,10 +219,25 @@
             }
 
             async function loadBulletin() {
-                // No backend: show the empty state for each board.
-                renderAnnouncements([]);
-                renderEvents(seList, []);
-                renderEvents(ceList, []);
+                let data;
+                try {
+                    const res = await fetch("/api/bulletin", {
+                        headers: { Accept: "application/json" },
+                    });
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    data = await res.json();
+                } catch {
+                    // Offline, or the functions are not deployed yet.
+                    renderAnnouncements([]);
+                    renderEvents(seList, []);
+                    renderEvents(ceList, []);
+                    return;
+                }
+
+                const events = data.events || {};
+                renderAnnouncements(data.announcements || []);
+                renderEvents(seList, events.school || []);
+                renderEvents(ceList, events.club || []);
             }
 
             loadBulletin();

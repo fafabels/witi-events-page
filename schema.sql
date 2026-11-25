@@ -61,3 +61,45 @@ CREATE INDEX IF NOT EXISTS idx_admin_sessions_admin_id
     ON admin_sessions (admin_id);
 CREATE INDEX IF NOT EXISTS idx_admin_sessions_expires_at
     ON admin_sessions (expires_at);
+
+-- ============================================================
+--  Bulletin board content
+--
+--  These are what admin.html posts and bulletin.html renders.
+--  Both edits are written only through functions/_utils/bulletin.js.
+-- ============================================================
+
+-- Announcements. `message` is the short line the board shows;
+-- `detail` is the longer text revealed on hover / click / focus.
+-- detail may be '' when the admin left it blank.
+CREATE TABLE IF NOT EXISTS announcements (
+    announcement_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message         TEXT    NOT NULL,              -- short line
+    detail          TEXT    NOT NULL DEFAULT '',   -- shown on hover / click
+    created_at      INTEGER NOT NULL,              -- epoch seconds
+    CONSTRAINT ck_announcements_message_length
+        CHECK (length(message) BETWEEN 1 AND 200),
+    CONSTRAINT ck_announcements_detail_length
+        CHECK (length(detail) <= 2000)
+);
+
+-- Newest first is how both pages list them.
+CREATE INDEX IF NOT EXISTS idx_announcements_created_at
+    ON announcements (created_at DESC, announcement_id DESC);
+
+-- Events, split over two boards by `kind`.
+CREATE TABLE IF NOT EXISTS events (
+    event_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind        TEXT NOT NULL
+                    CHECK (kind IN ('school', 'club')),  -- which board
+    message     TEXT NOT NULL,                           -- what is happening
+    event_date  TEXT NOT NULL,                           -- YYYY-MM-DD (from <input type="date">)
+    created_at  INTEGER NOT NULL,                        -- epoch seconds
+    CONSTRAINT ck_events_message_length
+        CHECK (length(message) BETWEEN 1 AND 200),
+    CONSTRAINT ck_events_date_format
+        CHECK (event_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]')
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_kind_date
+    ON events (kind, event_date);
