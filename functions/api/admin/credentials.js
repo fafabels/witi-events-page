@@ -17,7 +17,6 @@ import {
   json,
   normalizeName,
   validatePassword,
-  PASSWORD_LENGTH,
   saveAdmin,
   listAdmins,
   getAdmin,
@@ -89,7 +88,7 @@ export async function onRequestPost({ request, env }) {
         ok: true,
         replaced: Boolean(existing),
         name: nameResult.name,
-        passwordLength: PASSWORD_LENGTH,
+        passwordLength: passwordResult.password.length,
         message: existing
           ? `Password updated for ${nameResult.name}.`
           : `${nameResult.name} can now log in as an admin.`,

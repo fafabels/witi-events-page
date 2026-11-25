@@ -42,15 +42,13 @@
                     type="password"
                     id="cred_password"
                     name="cred_password"
-                    placeholder="Exactly 12 characters"
-                    minlength="12"
-                    maxlength="12"
+                    placeholder="Enter a password"
                     autocomplete="new-password"
                     required
                 >
                 <br>
 
-                <p id="cred_password_count">0 / 12 characters</p>
+                <p id="cred_password_count"></p>
                 <p id="credential_status"></p>
                 <button type="submit" id="add_credential_button">Save key &ndash; value pair</button>
             </form>
@@ -289,9 +287,9 @@
         //  /api/admin/credentials -- the page never touches KV itself.
         //  Values are shown as names only: the server keeps the
         //  password as a hash and never sends it back.
+        //
+        //  Passwords have no length limit; they just cannot be empty.
         // ============================================================
-
-        const PASSWORD_LENGTH = 12;
 
         const credWho = document.getElementById("cred_who");
         const credPassword = document.getElementById("cred_password");
@@ -436,10 +434,10 @@
         }
 
         credPassword.addEventListener("input", () => {
+            // No limit to police, so just show how long it is.
             const count = credPassword.value.length;
-            credPasswordCount.textContent = `${count} / ${PASSWORD_LENGTH} characters`;
-            credPasswordCount.style.color =
-                count === 0 ? "inherit" : count === PASSWORD_LENGTH ? "green" : "red";
+            credPasswordCount.textContent = count === 0 ? "" : `${count} characters`;
+            credPasswordCount.style.color = "inherit";
         });
 
         document.getElementById("add_credential_form").addEventListener("submit", async (e) => {
@@ -454,12 +452,8 @@
                 nameInput.focus();
                 return;
             }
-            if (password.length !== PASSWORD_LENGTH) {
-                setStatus(
-                    credStatus,
-                    `A password must be exactly ${PASSWORD_LENGTH} characters (currently ${password.length}).`,
-                    "red",
-                );
+            if (!password) {
+                setStatus(credStatus, "Enter a password.", "red");
                 credPassword.focus();
                 return;
             }
@@ -487,7 +481,7 @@
 
                 setStatus(credStatus, data.message || "Saved.", "green");
                 credPassword.value = "";
-                credPasswordCount.textContent = `0 / ${PASSWORD_LENGTH} characters`;
+                credPasswordCount.textContent = "";
                 credPasswordCount.style.color = "inherit";
                 nameInput.value = "";
                 await loadSession();

@@ -47,12 +47,6 @@
             border-radius: 8px;
         }
 
-        #password_hint {
-            margin: 4px 0 0;
-            font-size: 12px;
-            opacity: 0.8;
-        }
-
         #login_status {
             min-height: 20px;
             margin: 14px 0 8px;
@@ -115,12 +109,9 @@
                 id="password"
                 name="password"
                 placeholder="Enter your provided password"
-                minlength="12"
-                maxlength="12"
                 autocomplete="current-password"
                 required
             >
-            <p id="password_hint">Passwords are exactly 12 characters.</p>
 
             <p id="login_status"></p>
             <button type="submit" id="login_button">Login</button>
@@ -183,8 +174,8 @@
                 setStatus("Enter your name.", "red");
                 return;
             }
-            if (password.length !== 12) {
-                setStatus("A password is exactly 12 characters.", "red");
+            if (!password) {
+                setStatus("Enter your password.", "red");
                 return;
             }
 

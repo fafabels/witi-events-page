@@ -30,8 +30,9 @@ const KV_BINDING = "WITI_ADMINS";
 // session-signing secret) can never collide with an admin name.
 export const ADMIN_PREFIX = "admin:";
 
-// The rule from the brief: a password must be exactly 12 chars.
-export const PASSWORD_LENGTH = 12;
+// No length rule: an admin may use any password they like. The
+// only requirement is that it is not empty -- an empty password
+// would mean "anyone can log in as this admin".
 
 const SECRET_KEY = "__session_secret__";
 export const SESSION_COOKIE = "witi_admin";
@@ -106,10 +107,8 @@ export function normalizeName(raw) {
 
 export function validatePassword(raw) {
   const password = String(raw ?? "");
-  if (password.length !== PASSWORD_LENGTH) {
-    return {
-      error: `A password must be exactly ${PASSWORD_LENGTH} characters.`,
-    };
+  if (password.length === 0) {
+    return { error: "Enter a password." };
   }
   return { password };
 }
